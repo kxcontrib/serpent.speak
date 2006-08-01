@@ -1,0 +1,398 @@
+"""Python interface to the Q language
+
+The following examples are adapted from the"Kdb+ Database and Language Primer"
+by Dennis Shasha <http://kx.com/q/d/primer.htm>
+
+>>> y = q('(`aaa; `bbbdef; `c)'); y[0]
+k('`aaa')
+
+Unlike in Q, in python function call syntax uses '()' and
+indexing uses '[]':
+>>> z = q('(`abc; 10 20 30; (`a; `b); 50 60 61)')
+>>> z(2, 0)
+k('`a')
+>>> z[q('0 2')] # XXX: Should be able to write this as z[0,2]
+k('(`abc;`a`b)')
+
+
+Dictionaries
+
+>>> fruitcolor = q('`cherry`plum`tomato!`brightred`violet`brightred')
+>>> fruitcolor.plum
+k('`violet')
+>>> fruitcolor2 = q('`grannysmith`plum`prune!`green`reddish`black')
+>>> q(',', fruitcolor, fruitcolor2)
+k('`cherry`plum`tomato`grannysmith`prune!`brightred`reddish`brightred`green`black')
+
+Tables from Dictionaries
+
+>>> d = q('`name`salary! (`tom`dick`harry;30 30 35) ')
+>>> e = q.flip(d)
+>>> e[1]
+k('`name`salary!(`dick;30)')
+>>> q('{select name from x}', e)
+k('+(,`name)!,`tom`dick`harry')
+>>> q('{select sum salary from x}', e).salary
+k(',95')
+
+>>> e2 = q.xkey('name', e)
+>>> q('+', e2, e2)
+k('(+(,`name)!,`tom`dick`harry)!+(,`salary)!,60 60 70')
+>>> q.keys(e2)
+k(',`name')
+>>> q.cols(e2)
+k('`name`salary')
+
+Temporal Primitives
+
+>>> x = datetime(2004,7,3,16,35,24,980000)
+>>> K(x)
+k('2004.07.03T16:35:24.980')
+>>> K(x.date()), K(x.time())
+(k('2004.07.03'), k('16:35:24.980'))
+
+Input/Output
+
+>>> import os
+>>> r,w = os.pipe()
+>>> h = K(w)(kp("xyz"))
+>>> os.read(r, 100)
+'xyz'
+>>> os.close(r); os.close(w)
+"""
+__version__='$Revision: 1.6 $'
+import _k
+from datetime import datetime, date, time
+kerr = _k.error
+class K(_k.K):
+    """a handle to q objects
+
+    
+    >>> k('2005.01.01 2005.12.04')
+    k('2005.01.01 2005.12.04')
+
+    >>> list(q("`a`b`c`d"))
+    ['a', 'b', 'c', 'd']
+    
+    Array protocol:
+    >>> ','.join([k(x).__array_typestr__
+    ...  for x in ('0b;0x00;0h;0;0j;0e;0.0;" ";`;2000.01m;2000.01.01;'
+    ...            '2000.01.01T00:00:00.000;00:00;00:00:00;00:00:00.000')
+    ...  .split(';')])
+    '<b1,<u1,<i2,<i4,<i8,<f4,<f8,<S1,|O4,<i4,<i4,<f8,<i4,<i4,<f8'
+    """
+    try:
+        import numpy
+    except ImportError:
+        pass
+    else:
+        del numpy
+        __doc__ += """
+    Numpy support
+    ---------------
+
+    >>> from numpy import asarray, array
+    >>> asarray(k("1010b"))
+    array([True, False, True, False], dtype=bool)
+
+    >>> asarray(k("0x102030"))
+    array([16, 32, 48], dtype=uint8)
+
+    >>> asarray(k("0 1 2h"))
+    array([0, 1, 2], dtype=int16)
+
+    >>> asarray(k("0 1 2"))
+    array([0, 1, 2])
+
+    >>> asarray(k("0 1 2j"))
+    array([0, 1, 2], dtype=int64)
+
+    >>> asarray(k("0 1 2e"))
+    array([ 0.,  1.,  2.], dtype=float32)
+
+    >>> asarray(k("0 1 2.0"))
+    array([ 0.,  1.,  2.])
+
+    Date-time data-types expose their underlying data:
+
+    >>> asarray(k(",2000.01m"))
+    array([0])
+
+    >>> asarray(k(",2000.01.01"))
+    array([0])
+
+    >>> asarray(k(",2000.01.01T00:00:00.000"))
+    array([ 0.])
+
+   """
+    try:
+        import Numeric
+    except ImportError:
+        pass
+    else:
+        del Numeric
+        __doc__ += """
+    Numeric support
+    ---------------
+
+    >>> from Numeric import asarray, array
+    >>> asarray(k("1 2 3"))
+    array([1, 2, 3])
+    >>> K(array([1, 2, 3]))
+    k('1 2 3')
+    
+    K scalars behave like Numeric scalars
+    >>> asarray([1,2,3]) + k('0.5')
+    array([ 1.5,  2.5,  3.5])
+    >>> K(array(1.5))
+    k('1.5')
+    """
+    __doc__ += """
+    Low level interface
+    -------------------
+
+    The K type provides a set of low level functions that are similar
+    to the C API provided by the k.h header. The C API functions that
+    return K objects in C are implemented as class methods that return
+    instances of K type.
+
+    Atoms:
+    >>> K._kb(True), K._kg(5), K._kh(42), K._ki(-3), K._kj(2**40), K._ke(3.5)
+    (k('1b'), k('0x05'), k('42h'), k('-3'), k('1099511627776j'), k('3.5e'))
+    
+    >>> K._kf(1.0), K._kc('x'), K._ks('xyz')
+    (k('1f'), k('"x"'), k('`xyz'))
+    
+    >>> K._kd(0), K._kz(0.0), K._kt(0)
+    (k('2000.01.01'), k('2000.01.01T00:00:00.000'), k('00:00:00.000'))
+
+
+    Tables and dictionaries:
+    >>> x = K._xD(k('`a`b`c'), k('1 2 3')); x, K._xT(x)
+    (k('`a`b`c!1 2 3'), k('+`a`b`c!1 2 3'))
+
+    Keyed table:
+    >>> t = K._xD(K._xT(K._xD(k(",`a"), k(",1 2 3"))),
+    ...           K._xT(K._xD(k(",`b"), k(",10 20 30"))))
+    >>> K._ktd(t)
+    k('+`a`b!(1 2 3;10 20 30)')
+
+    """
+    def __new__(self, x):
+        tx = type(x)
+        if tx is K:
+            return x
+        try:
+            array_struct = x.__array_struct__
+        except AttributeError:
+            pass
+        else:
+            return K._from_array_interface(array_struct)
+        try:
+            c = converters[tx]
+        except KeyError:
+            pass
+        return c(x)
+        
+    def __call__(self, *args):
+        """call the k object
+
+        Arguments are automatically converted to appropriate k objects
+        >>> k('+')(date(1999,12,31), 2)
+        k('2000.01.02')
+
+        Strings are converted into symbols, use kp to convert to char
+        vectors:
+        >>> map(k('::'), ('abc', kp('abc')))
+        [k('`abc'), k('"abc"')]
+        
+        """
+        return q(".", self, K._knk(len(args), *map(K, args)))
+
+    def __getitem__(self, x):
+        """
+        >>> k("10 20 30 40 50")[k("1 3")]
+        k('20 40')
+        >>> k("`a`b`c!1 2 3")['b']
+        k('2')
+        """
+        return self._k(0, "@", self, K(x))
+
+    def __getattr__(self, a):
+        """table columns and dict values can be accessed via dot notation
+        >>> q("([]a:1 2 3; b:10 20 30)").a
+        k('1 2 3')
+        >>> q("(`a`b`c!10 20 30)").a
+        k('10')
+        """
+        if self.inspect('t') in (98,99):
+            return self._k(0, '{x`%s}'%a, self)
+        raise AttributeError
+        
+        
+    def __str__(self):
+        return self._k(0, "-3!", self).inspect('s')
+
+    def __repr__(self):
+        return 'k(%r)' % str(self)
+
+    def __int__(self):
+        """converts K scalars to python int
+
+        >>> map(int, map(q, '1b 2h 3 4e `5 6.0 2000.01.08'.split()))
+        [1, 2, 3, 4, 5, 6, 7]
+        """
+        t = self.inspect('t')
+        return int(self.inspect(fields[-t]))
+
+    def __float__(self):
+        """converts K scalars to python float
+
+        >>> map(float, map(q, '1b 2h 3 4e `5 6.0 2000.01.08'.split()))
+        [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
+        """
+        t = self.inspect('t')
+        return float(self.inspect(fields[-t]))
+
+    def __nonzero__(self):
+        t = self.inspect('t')
+        if t < 0:
+            return self.inspect(fields[-t]) != 0
+        else:
+            return self.inspect('n') > 0
+
+    def __eq__(self, other):
+        """
+        >>> K(1) == K(2)
+        k('0b')
+        """
+        return k('~')(self, other)
+
+    def __ne__(self, other):
+        """
+        >>> K(1) != K(2)
+        k('1b')
+        """
+        return k('~~')(self, other)
+
+    def __len__(self):
+        """
+        >>> len(q("1 2 3"))
+        3
+        """
+        
+        t = self.inspect('t')
+        if 0 < t < 98:
+            return self.inspect('n')
+        raise NotImplementedError
+
+fields = " g  ghijefgs iif iif"
+
+def k(m, *args):
+    return K._k(0, 'k)'+m, *map(K, args))
+
+class _Q(object):
+    _q = K._k(0, '.q')
+
+    def __call__(self, m, *args):
+        return K._k(0, m, *map(K, args))
+    
+    def __getattr__(self, attr):
+        if K._k(0, '{x in key .q}', K._ks(attr)):
+            return _Q._q[attr]
+        raise AttributeError(attr)
+
+q = _Q()
+
+def _test():
+    import doctest
+    doctest.testmod()
+
+def inttok(x):
+    if abs(x) > 2**32-1:
+        return K._kj(x)
+    else:
+        return K._ki(x)
+
+
+def datetimetok(x):
+    """converts python datetime to k
+    
+    >>> datetimetok(datetime(2006,5,3,2,43,25,999000))
+    k('2006.05.03T02:43:25.999')
+    """
+    midnight = x.combine(x, time(0))
+    delta = x - midnight
+    return K._kz(x.toordinal() - 730120
+                 + (delta.seconds + 0.000001*delta.microseconds)/86400.)
+
+def datetok(x):
+    """converts python date to k
+
+    >>> datetok(date(2006,5,3))
+    k('2006.05.03')
+    """
+    return K._kd(x.toordinal() - 730120)
+
+def timetok(x):
+    """converts python time to k
+    
+    >>> timetok(time(12,30,0,999000))
+    k('12:30:00.999')
+    """
+    return K._kt(x.microsecond//1000
+                 + 1000*(x.second
+                         + 60*(x.minute
+                               + 60*x.hour)))
+kp = K._kp
+
+converters = {
+    K: lambda x: x,
+    bool: K._kb,
+    int: inttok,
+    float: K._kf,
+    date: datetok,
+    datetime: datetimetok,
+    time: timetok,
+    str: K._ks,
+    }
+
+
+__test__ = {}
+try:
+    from numpy import array
+except ImportError:
+    pass
+else:
+    __test__["array interface (vector)"] ="""
+    >>> K._from_array_interface(array([1, 0, 1], bool).__array_struct__)
+    k('101b')
+    >>> K._from_array_interface(array([1, 2, 3], 'h').__array_struct__)
+    k('1 2 3h')
+    >>> K._from_array_interface(array([1, 2, 3]).__array_struct__)
+    k('1 2 3')
+    >>> K._from_array_interface(array([1, 2, 3], 'q').__array_struct__)
+    k('1 2 3j')
+    >>> K._from_array_interface(array([1, 2, 3], 'f').__array_struct__)
+    k('1 2 3e')
+    >>> K._from_array_interface(array([1, 2, 3], 'd').__array_struct__)
+    k('1 2 3f')
+    """
+    __test__["array interface (scalar)"] ="""
+    >>> K._from_array_interface(array(1, bool).__array_struct__)
+    k('1b')
+    >>> K._from_array_interface(array(1, 'h').__array_struct__)
+    k('1h')
+    >>> K._from_array_interface(array(1).__array_struct__)
+    k('1')
+    >>> K._from_array_interface(array(1, 'q').__array_struct__)
+    k('1j')
+    >>> K._from_array_interface(array(1, 'f').__array_struct__)
+    k('1e')
+    >>> K._from_array_interface(array(1, 'd').__array_struct__)
+    k('1f')
+    """
+
+if __name__ == "__main__":
+    _test()
+
