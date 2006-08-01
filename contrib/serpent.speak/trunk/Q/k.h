@@ -1,3 +1,5 @@
+/* http://kx.com/q/c/c/k.h - latest/definitive version *
+ * http://kx.com/q/c/c/readme.txt - documentation      */
 #ifdef WIN32
 typedef __int64 J;
 #else
