@@ -18,7 +18,7 @@ k('(`abc;`a`b)')
 Dictionaries
 
 >>> fruitcolor = q('`cherry`plum`tomato!`brightred`violet`brightred')
->>> fruitcolor.plum
+>>> fruitcolor['plum']
 k('`violet')
 >>> fruitcolor2 = q('`grannysmith`plum`prune!`green`reddish`black')
 >>> q(',', fruitcolor, fruitcolor2)
@@ -60,7 +60,7 @@ Input/Output
 'xyz'
 >>> os.close(r); os.close(w)
 """
-__version__='$Revision: 1.6 $'
+__version__='$Revision: 1.9 $'
 import _k
 from datetime import datetime, date, time
 kerr = _k.error
@@ -188,10 +188,7 @@ class K(_k.K):
             pass
         else:
             return K._from_array_interface(array_struct)
-        try:
-            c = converters[tx]
-        except KeyError:
-            pass
+        c = converters[tx]
         return c(x)
         
     def __call__(self, *args):
@@ -219,22 +216,34 @@ class K(_k.K):
         return self._k(0, "@", self, K(x))
 
     def __getattr__(self, a):
-        """table columns and dict values can be accessed via dot notation
+        """table columns can be accessed via dot notation
+        
         >>> q("([]a:1 2 3; b:10 20 30)").a
         k('1 2 3')
-        >>> q("(`a`b`c!10 20 30)").a
-        k('10')
+        >>> q("([a:1 2 3]b:10 20 30)").b
+        k('10 20 30')
         """
-        if self.inspect('t') in (98,99):
+        t = self.inspect('t')
+        if t == 98:
             return self._k(0, '{x`%s}'%a, self)
+        if t == 99:
+            return self._k(0, '{(0!x)`%s}'%a, self)
         raise AttributeError
         
         
     def __str__(self):
+        """implements str(x)
+
+        Symbols and character arrays are unchanged
+        >>> map(str, [q('`abc'), q('"def"')])
+        ['abc', 'def']
+        """
+        if self.inspect('t') in (_k.KC, -_k.KS):
+            return _k.K.__str__(self)
         return self._k(0, "-3!", self).inspect('s')
 
     def __repr__(self):
-        return 'k(%r)' % str(self)
+        return 'k(%r)' % self._k(0, "-3!", self).inspect('s')
 
     def __int__(self):
         """converts K scalars to python int
@@ -282,7 +291,7 @@ class K(_k.K):
         """
         
         t = self.inspect('t')
-        if 0 < t < 98:
+        if 0 <= t < 98:
             return self.inspect('n')
         raise NotImplementedError
 
@@ -357,7 +366,14 @@ converters = {
     str: K._ks,
     }
 
-
+try:
+    from MA import array as ma_array
+except ImportError:
+    pass
+else:
+    null = {'l': int(q("0N")), 'f': float(q("0n")),
+            'O': "",}
+    converters[ma_array] = lambda(a): K(a.filled(null[a.typecode()]))
 __test__ = {}
 try:
     from numpy import array

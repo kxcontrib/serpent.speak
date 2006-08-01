@@ -1,5 +1,5 @@
 /* -*- mode: c; c-basic-offset: 8 -*- */
-static char __version__[] = "$Revision: 1.15 $";
+static char __version__[] = "$Revision: 1.18 $";
 #define PYK_K_MODULE 1
 /*
   K object layout (32 bit):
@@ -95,7 +95,7 @@ KObject_FromK(PyTypeObject *type, K k)
 	if (!k) {
 		return PyErr_Format(PyExc_ValueError, "null k object");
 	}
-	KObject *self = (KObject*)type->tp_new(type, 0, 0);
+	KObject *self = (KObject*)type->tp_alloc(type, 0);
 	if (self)
 		self->_k = r1(k);
 	return (PyObject*)self;
@@ -122,6 +122,20 @@ K_dealloc(KObject *self)
 		r0(self->_k);
 	}
 	self->ob_type->tp_free(self);
+}
+
+static PyObject*
+K_str(KObject *self)
+{
+	K x = self->_k;
+	switch (xt) {
+	case KC:
+		return PyString_FromStringAndSize(xC, xn);
+	case -KS:
+		return PyString_FromString(xs);
+	}
+	return PyString_FromFormat("<%s object of type %d at 0x%p>",
+				   self->ob_type->tp_name, xt, x);
 }
 
 /** Array interface **/
@@ -270,6 +284,8 @@ k_ktype(int typekind, int itemsize)
 		}
 	case 'b':
 		return KB;
+	case 'O':
+		return KS;
 	}
 	return -1;
 }
@@ -283,38 +299,60 @@ K_from_array_interface(PyTypeObject *type, PyObject *arg)
 	KObject *ret;
 	PyArrayInterface *inter;
 	K x;
-	int t;
+	int t, s;
 	if (!PyCObject_Check(arg) 
 	    || ((inter=((PyArrayInterface *)PyCObject_AsVoidPtr(arg)))->version != 2)) 
 		{
 			PyErr_SetString(PyExc_ValueError, "invalid __array_struct__");
 			return NULL;
 		}
-	t = k_ktype(inter->typekind, inter->itemsize);
+	if (inter->nd > 1) {
+		PyErr_Format(PyExc_ValueError, "cannot handle nd=%d",
+			     inter->nd);
+		return NULL;
+	}
+	s = inter->itemsize;
+	t = k_ktype(inter->typekind, s);
 	if (t < 0) {
 		PyErr_Format(PyExc_ValueError, "cannot handle type '%c%d'",
 			     inter->typekind, inter->itemsize);
+		return NULL;
 	}
-	switch (inter->nd) {
-	case 1:
-		x = ktn(t, inter->shape[0]);
-		break;
-	case 0:
-		x = ka(-t);
-		break;
-	default:
-		return PyErr_NoMemory();
-	}
+	x = inter->nd?ktn(t, inter->shape[0]):ka(-t);
 	if (!x)
 		return PyErr_NoMemory();
 	if (xt == -128) {
 		PyErr_SetString(ErrorObject, xs);
                 return NULL;
 	}
-	if (inter->nd)
-		memcpy(xG, inter->data, inter->shape[0]*inter->itemsize);
-	else
-		memcpy(&x->g, inter->data, inter->itemsize);
+	if (t == KS) {
+		PyObject** src =  (PyObject**)inter->data;
+		if (inter->nd) {
+			S* dest = xS;
+			int n = inter->shape[0], i;
+			dest = xS;
+			for(i = 0; i < n; ++i) {
+				PyObject* obj = src[i*inter->strides[0]/s];
+				if (!PyString_Check(obj)) {
+					PyErr_SetString(PyExc_ValueError, "non-string in object array");
+					r0(x);
+					return NULL;
+				}
+				dest[i] = sn(PyString_AS_STRING(obj),  PyString_GET_SIZE(obj));
+			}
+		} else {
+			PyObject* obj = src[0];
+			xs = sn(PyString_AS_STRING(obj),  PyString_GET_SIZE(obj));
+		}
+	}
+	else {
+		if (inter->nd) {
+			int n = inter->shape[0];
+			DO(n, memcpy(xG+i*s, inter->data+i*inter->strides[0], s));
+		}
+		else
+			memcpy(&x->g, inter->data, inter->itemsize);
+	}
 	ret = (KObject*)type->tp_alloc(type, 0);
 	if (!ret) {
 		r0(x);
@@ -1400,7 +1438,7 @@ static PyTypeObject K_Type = {
 	0,			/*tp_as_mapping*/
 	0,			/*tp_hash*/
         0,                      /*tp_call*/
-        0,                      /*tp_str*/
+        K_str,                  /*tp_str*/
         0,                      /*tp_getattro*/
         0,                      /*tp_setattro*/
         0,/*&K_as_buffer,         tp_as_buffer*/
@@ -1532,9 +1570,14 @@ kiter_next(kiterobject *it)
 	assert(PyArrayIter_Check(it));
 	if (it->ptr < it->end)
 		switch (it->itemtype) {
-		case KS: /* most common case */
+		case KS: /* most common case: use list(ks) */
 			ret = PyString_FromString(*(char**)it->ptr);
 			break;
+		case 0:
+			ret = KObject_FromK(it->obj->ob_type, *(K*)it->ptr);
+			break;
+		/* remaining cases are less common because array(x) *
+		 * is a better option that list(x)                  */
 		case KB:
 			ret = PyBool_FromLong(*(char*)it->ptr);
 			break;
@@ -1543,14 +1586,14 @@ kiter_next(kiterobject *it)
 			ret = PyString_FromStringAndSize(it->ptr, 1);
 			break;
 		case KH:
-			ret = PyLong_FromLong(*(short*)it->ptr);
+			ret = PyInt_FromLong(*(short*)it->ptr);
 			break;
 		case KI:
 		case KM:
 		case KD:
 		case KV:
 		case KT:
-			ret = PyLong_FromLong(*(int*)it->ptr);
+			ret = PyInt_FromLong(*(int*)it->ptr);
 			break;
 		case KJ:
 			ret = PyLong_FromLongLong(*(long long*)it->ptr);
