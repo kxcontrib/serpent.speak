@@ -1,5 +1,5 @@
 /* -*- mode: c; c-basic-offset: 8 -*- */
-static char __version__[] = "$Revision: 1.18 $";
+static char __version__[] = "$Revision: 1.19 $";
 #define PYK_K_MODULE 1
 /*
   K object layout (32 bit):
@@ -712,6 +712,35 @@ K_ks(PyTypeObject *type, PyObject *args)
 	return (PyObject*)ret;
 }
 
+PyDoc_STRVAR(K_S_doc,
+	     "returns a K symbol list");
+static PyObject *
+K_S(PyTypeObject *type, PyObject *arg)
+{
+	PyObject *seq = PySequence_Fast(arg, "K._S: not a sequence");
+	if (seq == NULL)
+		return NULL;
+	int i, n = PySequence_Fast_GET_SIZE(seq);
+	K x = ktn(KS, n);
+	for (i = 0; i < n; ++i) {
+		PyObject *o = PySequence_Fast_GET_ITEM(seq, i);
+		if (!PyString_Check(o)) {
+			r0(x);
+			PyErr_Format(PyExc_TypeError,
+				     "K._S: %d-th item is not a string", i);
+			return NULL;
+		}
+		xS[i] = sn(PyString_AS_STRING(o), PyString_GET_SIZE(o));
+	}
+	KObject *ret = (KObject*)type->tp_alloc(type, 0);
+	if (!ret) {
+		r0(x);
+		return NULL;
+	}
+	ret->_k = x;
+	return (PyObject*)ret;
+}
+
 PyDoc_STRVAR(K_kd_doc,
 	     "returns a K date");
 static PyObject *
@@ -1388,6 +1417,7 @@ K_methods[] = {
 	{"_kf",	(PyCFunction)K_kf, METH_VARARGS|METH_CLASS, K_kf_doc},
 	{"_kc",	(PyCFunction)K_kc, METH_VARARGS|METH_CLASS, K_kc_doc},
 	{"_ks",	(PyCFunction)K_ks, METH_VARARGS|METH_CLASS, K_ks_doc},
+	{"_S",	(PyCFunction)K_S, METH_O|METH_CLASS, K_S_doc},
 	{"_kd",	(PyCFunction)K_kd, METH_VARARGS|METH_CLASS, K_kd_doc},
 	{"_kz",	(PyCFunction)K_kz, METH_VARARGS|METH_CLASS, K_kz_doc},
 	{"_kt",	(PyCFunction)K_kt, METH_VARARGS|METH_CLASS, K_kt_doc},
