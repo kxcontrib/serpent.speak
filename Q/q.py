@@ -60,7 +60,7 @@ Input/Output
 'xyz'
 >>> os.close(r); os.close(w)
 """
-__version__='$Revision: 1.9 $'
+__version__='$Revision: 1.10 $'
 import _k
 from datetime import datetime, date, time
 kerr = _k.error
@@ -353,6 +353,19 @@ def timetok(x):
                  + 1000*(x.second
                          + 60*(x.minute
                                + 60*x.hour)))
+
+def _ni(x): raise NotImplementedError
+_X = {str:K._S, int:_ni, float:_ni}
+def listtok(x):
+    """converts python list to k
+
+    type is determined by the type of the first element of the list
+
+    >>> listtok(list("abc"))
+    k('`a`b`c')
+    """
+    return _X[type(x[0])](x)
+
 kp = K._kp
 
 converters = {
@@ -364,6 +377,8 @@ converters = {
     datetime: datetimetok,
     time: timetok,
     str: K._ks,
+    list: listtok,
+    tuple: listtok,
     }
 
 try:
