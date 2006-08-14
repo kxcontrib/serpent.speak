@@ -1,5 +1,5 @@
 /* -*- mode: c; c-basic-offset: 8 -*- */
-static char __version__[] = "$Revision: 1.19 $";
+static char __version__[] = "$Revision: 1.20 $";
 #define PYK_K_MODULE 1
 /*
   K object layout (32 bit):
@@ -412,6 +412,40 @@ K_err(PyTypeObject *type, PyObject *args)
 	}
 	krr(s);
 	Py_RETURN_NONE;
+}
+
+PyDoc_STRVAR(K_ka_doc,
+	     "returns a K atom");
+static PyObject *
+K_ka(PyTypeObject *type, PyObject *args)
+{
+	KObject *ret = 0;
+	I i;
+	if (!PyArg_ParseTuple(args, "i|O!", &i, &K_Type, &ret)) {
+		return NULL;
+	}
+	K k = ka(i);
+	if (!k) {
+		return PyErr_NoMemory();
+	}
+	if (ret) {
+		if (ret->_k) {
+			r0(ret->_k);
+		}
+		ret->_k = k;
+		Py_RETURN_NONE;
+	}
+	if (!type) {
+		type = &K_Type;
+	}
+	assert(PyType_IsSubtype(type, &K_Type));
+	ret = (KObject*)type->tp_alloc(type, 0);
+	if (!ret) {
+		r0(k);
+		return NULL;
+	}
+	ret->_k = k;
+	return (PyObject*)ret;
 }
 
 PyDoc_STRVAR(K_kb_doc,
@@ -1408,6 +1442,7 @@ K_methods[] = {
 	{"_knk",(PyCFunction)K_knk, METH_VARARGS|METH_CLASS, K_knk_doc},
 	{"_ktd",(PyCFunction)K_ktd, METH_VARARGS|METH_CLASS, K_ktd_doc},
 	{"_err",(PyCFunction)K_err, METH_VARARGS|METH_CLASS, K_err_doc},
+	{"_ka",	(PyCFunction)K_ka, METH_VARARGS|METH_CLASS, K_ka_doc},
 	{"_kb",	(PyCFunction)K_kb, METH_VARARGS|METH_CLASS, K_kb_doc},
 	{"_kg",	(PyCFunction)K_kg, METH_VARARGS|METH_CLASS, K_kg_doc},
 	{"_kh",	(PyCFunction)K_kh, METH_VARARGS|METH_CLASS, K_kh_doc},
@@ -1738,5 +1773,6 @@ XINIT(MODULE_NAME)(void)
 	PyModule_AddIntConstant(m, "XT", XT);
 	PyModule_AddIntConstant(m, "XD", XD);
 
+	PyModule_AddIntConstant(m, "SIZEOF_VOID_P", SIZEOF_VOID_P);
 	PyModule_AddStringConstant(m, "__version__", __version__);
 }
