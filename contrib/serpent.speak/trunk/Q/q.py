@@ -78,9 +78,10 @@ class K(_k.K):
     >>> ','.join([k(x).__array_typestr__
     ...  for x in ('0b;0x00;0h;0;0j;0e;0.0;" ";`;2000.01m;2000.01.01;'
     ...            '2000.01.01T00:00:00.000;00:00;00:00:00;00:00:00.000')
-    ...  .split(';')])
-    '<b1,<u1,<i2,<i4,<i8,<f4,<f8,<S1,|O4,<i4,<i4,<f8,<i4,<i4,<f8'
-    """
+    ...  .split(';')])"""
+    __doc__ += """
+    '<b1,<u1,<i2,<i4,<i8,<f4,<f8,<S1,|O%d,<i4,<i4,<f8,<i4,<i4,<f8'
+    """ % _k.SIZEOF_VOID_P
     try:
         import numpy
     except ImportError:
