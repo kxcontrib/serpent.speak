@@ -1,6 +1,6 @@
 """Python interface to the Q language
 
-The following examples are adapted from the"Kdb+ Database and Language Primer"
+The following examples are adapted from the "Kdb+ Database and Language Primer"
 by Dennis Shasha <http://kx.com/q/d/primer.htm>
 
 >>> y = q('(`aaa; `bbbdef; `c)'); y[0]
@@ -60,7 +60,7 @@ Input/Output
 'xyz'
 >>> os.close(r); os.close(w)
 """
-__version__='$Revision: 1.10 $'
+__version__='$Revision: 1.12 $'
 import _k
 from datetime import datetime, date, time
 kerr = _k.error
@@ -143,7 +143,7 @@ class K(_k.K):
     k('1 2 3')
     
     K scalars behave like Numeric scalars
-    >>> asarray([1,2,3]) + k('0.5')
+    >>> asarray([1,2,3]) + asarray(k('0.5'))
     array([ 1.5,  2.5,  3.5])
     >>> K(array(1.5))
     k('1.5')
@@ -274,19 +274,19 @@ class K(_k.K):
     def __eq__(self, other):
         """
         >>> K(1) == K(2)
-        k('0b')
+        False
         """
-        return k('~')(self, other)
+        return bool(k('~')(self, other))
 
     def __ne__(self, other):
         """
         >>> K(1) != K(2)
-        k('1b')
+        True
         """
-        return k('~~')(self, other)
+        return bool(k('~~')(self, other))
 
     def __len__(self):
-        """
+        """the length of the object
         >>> len(q("1 2 3"))
         3
         """
@@ -295,6 +295,51 @@ class K(_k.K):
         if 0 <= t < 98:
             return self.inspect('n')
         raise NotImplementedError
+
+    def __contains__(self, item):
+        """membership test
+
+        >>> 1 in q('1 2 3')
+        True
+
+        >>> 'abc' not in q('(1;2.0;`abc)')
+        False
+        """
+        if self.inspect('t'):
+            x = q('in', item, self)
+        else:
+            x = q('{sum x~/:y}', item, self)
+        return bool(x)
+
+    def __get__(self, client, cls):
+        """allow K objects use as descriptors"""
+        if client is None:
+            return self
+        else:
+            return self(client)
+        
+    __doc__ += """
+    Q objects can be used in Python arithmetic expressions
+    
+    >>> x,y,z = map(K, (1,2,3))
+    >>> print x + y, x * y, z/y, x|y, x&y
+    3 2 1.5 2 1
+
+    Mixing Q objects with python numbers is allowed
+    >>> 1/q('1 2 4')
+    k('1 0.5 0.25')
+    >>> q.til(5)**2
+    k('0 1 4 9 16f')
+    """
+    
+for spec, verb in [('add', '+'), ('sub', '-'), ('mul', '*'), ('pow', 'xexp'),
+                   ('div', '%'), ('rdiv', '{y%x}'), ('and', '&'), ('or', '|'),
+                   ('mod', 'mod')]:
+    setattr(K, '__%s__' % spec, K._k(0, verb))
+del spec, verb
+for spec in 'add sub mul pow and or mod'.split():
+    setattr(K, '__r%s__' % spec, getattr(K, '__%s__' % spec))
+del spec
 
 fields = " g  ghijefgs iif iif"
 
