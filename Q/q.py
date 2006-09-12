@@ -60,19 +60,26 @@ Input/Output
 'xyz'
 >>> os.close(r); os.close(w)
 """
-__version__='$Revision: 1.12 $'
+__version__='$Revision: 1.16 $'
 import _k
 from datetime import datetime, date, time
 kerr = _k.error
 class K(_k.K):
     """a handle to q objects
-
     
     >>> k('2005.01.01 2005.12.04')
     k('2005.01.01 2005.12.04')
 
     >>> list(q("`a`b`c`d"))
     ['a', 'b', 'c', 'd']
+
+    Buffer protocol:
+    >>> x = kp('xxxxxx')
+    >>> import os; r,w = os.pipe()
+    >>> os.write(w, 'abcdef') == os.fdopen(r).readinto(x)
+    True
+    >>> os.close(w); x
+    k('"abcdef"')
     
     Array protocol:
     >>> ','.join([k(x).__array_typestr__
@@ -201,11 +208,14 @@ class K(_k.K):
 
         Strings are converted into symbols, use kp to convert to char
         vectors:
-        >>> map(k('::'), ('abc', kp('abc')))
+        >>> map(k('{x}'), ('abc', kp('abc')))
         [k('`abc'), k('"abc"')]
         
         """
-        return q(".", self, K._knk(len(args), *map(K, args)))
+        if args:
+            return self._dot(self._knk(len(args), *map(K, args)))
+        else:
+            return q("@", self, k('::')) 
 
     def __getitem__(self, x):
         """
@@ -331,10 +341,10 @@ class K(_k.K):
     >>> q.til(5)**2
     k('0 1 4 9 16f')
     """
-    
+
 for spec, verb in [('add', '+'), ('sub', '-'), ('mul', '*'), ('pow', 'xexp'),
                    ('div', '%'), ('rdiv', '{y%x}'), ('and', '&'), ('or', '|'),
-                   ('mod', 'mod')]:
+                   ('mod', 'mod'), ('pos', '+:'), ('neg', '-:')]:
     setattr(K, '__%s__' % spec, K._k(0, verb))
 del spec, verb
 for spec in 'add sub mul pow and or mod'.split():
@@ -364,10 +374,21 @@ def _test():
     doctest.testmod()
 
 def inttok(x):
-    if abs(x) > 2**32-1:
-        return K._kj(x)
-    else:
+    """converts python int to k
+    
+    >>> inttok(2**40)
+    k('1099511627776j')
+    >>> inttok(42)
+    k('42')
+    >>> inttok(2**65)
+    Traceback (most recent call last):
+    ...
+    OverflowError: long too big to convert
+    """
+    try:
         return K._ki(x)
+    except OverflowError:
+        return K._kj(x)
 
 
 def datetimetok(x):
@@ -418,6 +439,7 @@ converters = {
     K: lambda x: x,
     bool: K._kb,
     int: inttok,
+    long: inttok,
     float: K._kf,
     date: datetok,
     datetime: datetimetok,
