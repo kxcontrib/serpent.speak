@@ -1,6 +1,5 @@
 /* -*- mode: c; c-basic-offset: 8 -*- */
-static char __version__[] = "$Revision: 1.20 $";
-#define PYK_K_MODULE 1
+static char __version__[] = "$Revision: 1.27 $";
 /*
   K object layout (32 bit):
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6
@@ -29,7 +28,7 @@ static char __version__[] = "$Revision: 1.20 $";
 #include <stdlib.h>
 typedef struct {
         PyObject_HEAD
-        K _k;
+        K x;
 } KObject;
 static PyTypeObject K_Type;
 
@@ -41,11 +40,6 @@ static PyTypeObject K_Type;
 #ifndef  Py_RETURN_NONE
 #   define Py_RETURN_NONE Py_INCREF(Py_None); return Py_None
 #endif
-#ifndef MODULE_NAME
-#   define  MODULE_NAME _k
-#endif
-#define STRINGIFY(x) #x
-#define XSTRINGIFY(x) STRINGIFY(x)
 
 PyDoc_STRVAR(module_doc,
 "q interface module.\n"
@@ -87,17 +81,21 @@ PyDoc_STRVAR(module_doc,
 /* K objects */
 static PyObject *ErrorObject;
 static PyObject *
-KObject_FromK(PyTypeObject *type, K k)
+KObject_FromK(PyTypeObject *type, K x)
 {
-	if (!type) {
+	if (!type) 
 		type = &K_Type;
-	}
-	if (!k) {
+	if (!x) 
 		return PyErr_Format(PyExc_ValueError, "null k object");
+	if (xt == -128)
+		return PyErr_Format(ErrorObject, xs),r0(x),NULL; 
+	if (xt == 101 && xi == 0) {
+		r0(x);
+		Py_RETURN_NONE;
 	}
 	KObject *self = (KObject*)type->tp_alloc(type, 0);
 	if (self)
-		self->_k = r1(k);
+		self->x = x;
 	return (PyObject*)self;
 }
 /* converter function */
@@ -107,10 +105,12 @@ getK(PyObject *arg, void *addr)
 	if (!K_Check(arg)) {
 		return PyErr_BadArgument();
 	}
-	K r = ((KObject*)arg)->_k;
+	K r = ((KObject*)arg)->x;
+	/*
 	if (!r) {
 		return PyErr_BadArgument();
 	}
+	*/
 	*(K*)addr = r;
 	return 1;
 }
@@ -118,16 +118,39 @@ getK(PyObject *arg, void *addr)
 static void
 K_dealloc(KObject *self)
 {
-	if (self->_k) {
-		r0(self->_k);
+	if (self->x) {
+		r0(self->x);
 	}
 	self->ob_type->tp_free(self);
 }
 
 static PyObject*
+K_dot(KObject *self, PyObject *args)
+{
+	R K_Check(args)
+		? KObject_FromK(self->ob_type, 
+				dot(self->x, ((KObject*)args)->x))
+		: PyErr_Format(PyExc_TypeError, "expected a K object, not %s",
+			       args->ob_type->tp_name);
+}
+
+static PyObject*
+K_call(KObject *self, PyObject *args, PyObject *kw)
+{
+	I n = PyTuple_GET_SIZE(args);
+	K x;
+	if (kw) {
+		
+	}
+	x = ktn(0,n);
+
+	return KObject_FromK(self->ob_type, k(0, ".", self->x, x));
+}
+
+static PyObject*
 K_str(KObject *self)
 {
-	K x = self->_k;
+	K x = self->x;
 	switch (xt) {
 	case KC:
 		return PyString_FromStringAndSize(xC, xn);
@@ -206,7 +229,7 @@ k_array_struct_free(void *ptr, void *arr)
 static PyObject *
 K_array_struct_get(KObject *self)
 {
-	K k = self->_k;
+	K k = self->x;
 	if (!k) {
 		PyErr_SetString(PyExc_AttributeError, "Null k object");
 		return NULL;
@@ -249,7 +272,7 @@ K_array_struct_get(KObject *self)
 static PyObject *
 K_array_typestr_get(KObject *self)
 {
-	K k = self->_k;
+	K k = self->x;
 	static int const one = 1;
 	char const endian = "><"[(int)*(char const*)&one];
 	char const typekind = k_typekind(k);
@@ -296,7 +319,6 @@ PyDoc_STRVAR(K_from_array_interface_doc,
 static PyObject * 
 K_from_array_interface(PyTypeObject *type, PyObject *arg) 
 {
-	KObject *ret;
 	PyArrayInterface *inter;
 	K x;
 	int t, s;
@@ -353,13 +375,7 @@ K_from_array_interface(PyTypeObject *type, PyObject *arg)
 		else
 			memcpy(&x->g, inter->data, inter->itemsize);
 	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(x);
-		return NULL;
-	}
-	ret->_k = x;
-	return (PyObject*)ret;
+	return KObject_FromK(type, x);
 }
 
 PyDoc_STRVAR(K_ktd_doc,
@@ -367,36 +383,15 @@ PyDoc_STRVAR(K_ktd_doc,
 static PyObject *
 K_ktd(PyTypeObject *type, PyObject *args)
 {
-	KObject *ret = 0;
-	K k0, k;
-	if (!PyArg_ParseTuple(args, "O&|O!", &getK, &k0, &K_Type, &ret)) {
+	K x = 0;
+	if (!PyArg_ParseTuple(args, "O&", &getK, &x)) {
 		return NULL;
 	}
-	if (!k0) {
+	if (!x) {
 		PyErr_BadArgument();
 		return NULL;
 	}
-	k = ktd(r1(k0));
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
+	return KObject_FromK(type, ktd(r1(x)));
 }
 
 PyDoc_STRVAR(K_err_doc,
@@ -414,304 +409,29 @@ K_err(PyTypeObject *type, PyObject *args)
 	Py_RETURN_NONE;
 }
 
-PyDoc_STRVAR(K_ka_doc,
-	     "returns a K atom");
-static PyObject *
-K_ka(PyTypeObject *type, PyObject *args)
-{
-	KObject *ret = 0;
-	I i;
-	if (!PyArg_ParseTuple(args, "i|O!", &i, &K_Type, &ret)) {
-		return NULL;
-	}
-	K k = ka(i);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	assert(PyType_IsSubtype(type, &K_Type));
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
-}
-
-PyDoc_STRVAR(K_kb_doc,
-	     "returns a K bool");
-static PyObject *
-K_kb(PyTypeObject *type, PyObject *args)
-{
-	KObject *ret = 0;
-	G g;
-	if (!PyArg_ParseTuple(args, "b|O!", &g, &K_Type, &ret)) {
-		return NULL;
-	}
-	K k = kb(g);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	assert(PyType_IsSubtype(type, &K_Type));
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
-}
-
-PyDoc_STRVAR(K_kg_doc,
-	     "returns a K byte");
-static PyObject *
-K_kg(PyTypeObject *type, PyObject *args)
-{
-	KObject *ret = 0;
-	G g;
-	if (!PyArg_ParseTuple(args, "b|O!", &g, &K_Type, &ret)) {
-		return NULL;
-	}
-	K k = kg(g);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
-}
-
-PyDoc_STRVAR(K_kh_doc,
-	     "returns a K short");
-static PyObject *
-K_kh(PyTypeObject *type, PyObject *args)
-{
-	KObject *ret = 0;
-	H h;
-	if (!PyArg_ParseTuple(args, "h|O!", &h, &K_Type, &ret)) {
-		return NULL;
-	}
-	K k = kh(h);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
-}
-
-PyDoc_STRVAR(K_ki_doc,
-	     "returns a K int");
-static PyObject *
-K_ki(PyTypeObject *type, PyObject *args)
-{
-	KObject *ret = 0;
-	I i;
-	if (!PyArg_ParseTuple(args, "i|O!", &i, &K_Type, &ret)) {
-		return NULL;
-	}
-	K k = ki(i);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
-}
-
-PyDoc_STRVAR(K_kj_doc,
-	     "returns a K long (64 bits)");
-static PyObject *
-K_kj(PyTypeObject *type, PyObject *args)
-{
-	KObject *ret = 0;
-	J j;
-	if (!PyArg_ParseTuple(args, "L|O!", &j, &K_Type, &ret)) {
-		return NULL;
-	}
-	K k = kj(j);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
-}
-
-PyDoc_STRVAR(K_ke_doc,
-	     "returns a K real (32 bits)");
-static PyObject *
-K_ke(PyTypeObject *type, PyObject *args)
-{
-	KObject *ret = 0;
-	E e;
-	if (!PyArg_ParseTuple(args, "f|O!", &e, &K_Type, &ret)) {
-		return NULL;
-	}
-	K k = ke(e);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
-}
-
-PyDoc_STRVAR(K_kf_doc,
-	     "returns a K float (64 bits)");
-static PyObject *
-K_kf(PyTypeObject *type, PyObject *args)
-{
-	KObject *ret = 0;
-	F f;
-	if (!PyArg_ParseTuple(args, "d|O!", &f, &K_Type, &ret)) {
-		return NULL;
-	}
-	K k = kf(f);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
-}
-
-PyDoc_STRVAR(K_kc_doc,
-	     "returns a K char");
-static PyObject *
-K_kc(PyTypeObject *type, PyObject *args)
-{
-	KObject *ret = 0;
-	G c;
-	if (!PyArg_ParseTuple(args, "c|O!:K.kc", &c, &K_Type, &ret)) {
-		return NULL;
-	}
-	K k = kc(c);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
-}
+#define K_ATOM(a, T, t, doc)					\
+	PyDoc_STRVAR(K_k##a##_doc, doc);			\
+	static PyObject *					\
+	K_k##a(PyTypeObject *type, PyObject *args)		\
+	{							\
+		T g;						\
+		if (!PyArg_ParseTuple(args, #t ":K.k"#a, &g))	\
+			return NULL;				\
+		K x = k##a(g);					\
+		if (!type) {					\
+			type = &K_Type;				\
+		}						\
+		return KObject_FromK(type, x);			\
+	}			
+K_ATOM(a, I, i, "returns a K atom")
+K_ATOM(b, G, b, "returns a K bool")
+K_ATOM(g, G, b, "returns a K byte")
+K_ATOM(h, H, h, "returns a K short")
+K_ATOM(i, I, i, "returns a K int")
+K_ATOM(j, J, L, "returns a K long (64 bits)")
+K_ATOM(e, E, f, "returns a K real (32 bits)")
+K_ATOM(f, F, d, "returns a K float (64 bits)")
+K_ATOM(c, G, c,	"returns a K char")
 
 PyDoc_STRVAR(K_ks_doc,
 	     "returns a K symbol");
@@ -720,30 +440,14 @@ K_ks(PyTypeObject *type, PyObject *args)
 {
 	KObject *ret = 0;
 	S s; I n;
-	if (!PyArg_ParseTuple(args, "s#|O!", &s, &n, &K_Type, &ret)) {
+	if (!PyArg_ParseTuple(args, "s#", &s, &n, &K_Type, &ret)) {
 		return NULL;
 	}
-	K k = ks(sn(s,n));
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
+	K x = ks(sn(s,n));
 	if (!type) {
 		type = &K_Type;
 	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
+	return KObject_FromK(type, x);
 }
 
 PyDoc_STRVAR(K_S_doc,
@@ -766,146 +470,13 @@ K_S(PyTypeObject *type, PyObject *arg)
 		}
 		xS[i] = sn(PyString_AS_STRING(o), PyString_GET_SIZE(o));
 	}
-	KObject *ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(x);
-		return NULL;
-	}
-	ret->_k = x;
-	return (PyObject*)ret;
+	return KObject_FromK(type, x);
 }
+K_ATOM(d, I, i, "returns a K date")
+K_ATOM(z, F, d, "returns a K datetime")
+K_ATOM(t, I, i, "returns a K time")
+K_ATOM(p, S, s, "returns a K string")
 
-PyDoc_STRVAR(K_kd_doc,
-	     "returns a K date");
-static PyObject *
-K_kd(PyTypeObject *type, PyObject *args)
-{
-	KObject *ret = 0;
-	I i;
-	if (!PyArg_ParseTuple(args, "i|O!", &i, &K_Type, &ret)) {
-		return NULL;
-	}
-	K k = kd(i);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
-}
-
-PyDoc_STRVAR(K_kz_doc,
-	     "returns a K datetime");
-static PyObject *
-K_kz(PyTypeObject *type, PyObject *args)
-{
-	KObject *ret = 0;
-	F f;
-	if (!PyArg_ParseTuple(args, "d|O!", &f, &K_Type, &ret)) {
-		return NULL;
-	}
-	K k = kz(f);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
-}
-
-PyDoc_STRVAR(K_kt_doc,
-	     "returns a K time");
-static PyObject *
-K_kt(PyTypeObject *type, PyObject *args)
-{
-	KObject *ret = 0;
-	I i;
-	if (!PyArg_ParseTuple(args, "i|O!", &i, &K_Type, &ret)) {
-		return NULL;
-	}
-	K k = kt(i);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
-}
-
-PyDoc_STRVAR(K_kp_doc,
-	     "returns a K string");
-static PyObject *
-K_kp(PyTypeObject *type, PyObject *args)
-{
-	KObject *ret = 0;
-	S s;
-	if (!PyArg_ParseTuple(args, "s|O!", &s, &K_Type, &ret)) {
-		return NULL;
-	}
-	K k = kp(s);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
-}
 PyDoc_STRVAR(K_ktn_doc,
 	     "returns a K list");
 static PyObject *
@@ -913,31 +484,16 @@ K_ktn(PyTypeObject *type, PyObject *args)
 {
 	KObject *ret = 0;
 	I i1, i2;
-	if (!PyArg_ParseTuple(args, "ii|O!", &i1, &i2, &K_Type, &ret)) {
+	if (!PyArg_ParseTuple(args, "ii", &i1, &i2, &K_Type, &ret)) {
 		return NULL;
 	}
-	K k = ktn(i1,i2);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
+	K x = ktn(i1,i2);
 	if (!type) {
 		type = &K_Type;
 	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
+	return KObject_FromK(type, x);
 }
+
 PyDoc_STRVAR(K_xT_doc,
 	     "table from dictionary");
 static PyObject *
@@ -954,37 +510,17 @@ K_xT(PyTypeObject *type, PyObject *args)
 	}
 	r1(k0);
 	k = xT(k0);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
+	return KObject_FromK(type, k);
 }
+
 PyDoc_STRVAR(K_xD_doc,
 	     "returns a K dict");
 static PyObject *
 K_xD(PyTypeObject *type, PyObject *args)
 {
-	KObject *ret = 0;
 	K k1 = 0, k2 = 0;
-	if (!PyArg_ParseTuple(args, "O&O&|O!",
-			      getK, &k1, getK, &k2,
-			      &K_Type, &ret))
+	if (!PyArg_ParseTuple(args, "O&O&",
+			      getK, &k1, getK, &k2))
 		{
 			return NULL;
 		}
@@ -992,28 +528,9 @@ K_xD(PyTypeObject *type, PyObject *args)
 		PyErr_BadArgument();
 		return NULL;
 	}
-	K k = xD(r1(k1), r1(k2));
-	assert(k->t == XD);
-	if (!k) {
-		return PyErr_NoMemory();
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = k;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(k);
-		return NULL;
-	}
-	ret->_k = k;
-	return (PyObject*)ret;
+	K x = xD(r1(k1), r1(k2));
+	assert(xt == XD);
+	return KObject_FromK(type, x);
 }
 
 
@@ -1022,12 +539,10 @@ PyDoc_STRVAR(K_knk_doc,
 static PyObject *
 K_knk(PyTypeObject *type, PyObject *args)
 {
-	KObject *ret = 0;
-	I n;
-	K r;
+	I n; K r;
 	switch (PyTuple_Size(args)-1) {
 	case 0: {
-		if (!PyArg_ParseTuple(args, "i|O!", &n, &K_Type, &ret)) {
+		if (!PyArg_ParseTuple(args, "i", &n)) {
 			return NULL;
 		}
 		r = knk(n);
@@ -1035,9 +550,8 @@ K_knk(PyTypeObject *type, PyObject *args)
 	}
 	case 1: {
 		K k1;
-		if (!PyArg_ParseTuple(args, "iO&|O!", &n,
-				      getK, &k1,
-				      &K_Type, &ret))
+		if (!PyArg_ParseTuple(args, "iO&", &n,
+				      getK, &k1))
 			{
 				return NULL;
 			}
@@ -1046,10 +560,9 @@ K_knk(PyTypeObject *type, PyObject *args)
 	}
 	case 2: {
 		K k1,k2;
-		if (!PyArg_ParseTuple(args, "iO&O&|O!", &n,
+		if (!PyArg_ParseTuple(args, "iO&O&", &n,
 				      getK, &k1,
-				      getK, &k2,
-				      &K_Type, &ret))
+				      getK, &k2))
 			{
 				return NULL;
 			}
@@ -1058,11 +571,10 @@ K_knk(PyTypeObject *type, PyObject *args)
 	}
 	case 3: {
 		K k1,k2,k3;
-		if (!PyArg_ParseTuple(args, "iO&O&O&|O!", &n,
+		if (!PyArg_ParseTuple(args, "iO&O&O&", &n,
 				      getK, &k1,
 				      getK, &k2,
-				      getK, &k3,
-				      &K_Type, &ret))
+				      getK, &k3))
 			{
 				return NULL;
 			}
@@ -1071,12 +583,11 @@ K_knk(PyTypeObject *type, PyObject *args)
 	}
 	case 4: {
 		K k1,k2,k3,k4;
-		if (!PyArg_ParseTuple(args, "iO&O&O&O&|O!", &n,
+		if (!PyArg_ParseTuple(args, "iO&O&O&O&", &n,
 				      getK, &k1,
 				      getK, &k2,
 				      getK, &k3,
-				      getK, &k4,
-				      &K_Type, &ret))
+				      getK, &k4))
 			{
 				return NULL;
 			}
@@ -1085,13 +596,12 @@ K_knk(PyTypeObject *type, PyObject *args)
 	}
 	case 5: {
 		K k1,k2,k3,k4,k5;
-		if (!PyArg_ParseTuple(args, "iO&O&O&O&O&|O!", &n,
+		if (!PyArg_ParseTuple(args, "iO&O&O&O&O&", &n,
 				      getK, &k1,
 				      getK, &k2,
 				      getK, &k3,
 				      getK, &k4,
-				      getK, &k5,
-				      &K_Type, &ret))
+				      getK, &k5))
 			{
 				return NULL;
 			}
@@ -1100,14 +610,13 @@ K_knk(PyTypeObject *type, PyObject *args)
 	}
 	case 6: {
 		K k1,k2,k3,k4,k5,k6;
-		if (!PyArg_ParseTuple(args, "iO&O&O&O&O&O&|O!", &n,
+		if (!PyArg_ParseTuple(args, "iO&O&O&O&O&O&", &n,
 				      getK, &k1,
 				      getK, &k2,
 				      getK, &k3,
 				      getK, &k4,
 				      getK, &k5,
-				      getK, &k6,
-				      &K_Type, &ret))
+				      getK, &k6))
 			{
 				return NULL;
 			}
@@ -1116,15 +625,14 @@ K_knk(PyTypeObject *type, PyObject *args)
 	}
 	case 7: {
 		K k1,k2,k3,k4,k5,k6,k7;
-		if (!PyArg_ParseTuple(args, "iO&O&O&O&O&O&O&|O!", &n,
+		if (!PyArg_ParseTuple(args, "iO&O&O&O&O&O&O&", &n,
 				      getK, &k1,
 				      getK, &k2,
 				      getK, &k3,
 				      getK, &k4,
 				      getK, &k5,
 				      getK, &k6,
-				      getK, &k7,
-				      &K_Type, &ret))
+				      getK, &k7))
 			{
 				return NULL;
 			}
@@ -1133,7 +641,7 @@ K_knk(PyTypeObject *type, PyObject *args)
 	}
 	case 8: {
 		K k1,k2,k3,k4,k5,k6,k7,k8;
-		if (!PyArg_ParseTuple(args, "iO&O&O&O&O&O&O&O&|O!", &n,
+		if (!PyArg_ParseTuple(args, "iO&O&O&O&O&O&O&O&", &n,
 				      getK, &k1,
 				      getK, &k2,
 				      getK, &k3,
@@ -1141,8 +649,7 @@ K_knk(PyTypeObject *type, PyObject *args)
 				      getK, &k5,
 				      getK, &k6,
 				      getK, &k7,
-				      getK, &k8,
-				      &K_Type, &ret))
+				      getK, &k8))
 			{
 				return NULL;
 			}
@@ -1151,7 +658,7 @@ K_knk(PyTypeObject *type, PyObject *args)
 	}
 	case 9: {
 		K k1,k2,k3,k4,k5,k6,k7,k8,k9;
-		if (!PyArg_ParseTuple(args, "iO&O&O&O&O&O&O&O&O&|O!", &n,
+		if (!PyArg_ParseTuple(args, "iO&O&O&O&O&O&O&O&O&", &n,
 				      getK, &k1,
 				      getK, &k2,
 				      getK, &k3,
@@ -1160,8 +667,7 @@ K_knk(PyTypeObject *type, PyObject *args)
 				      getK, &k6,
 				      getK, &k7,
 				      getK, &k8,
-				      getK, &k9,
-				      &K_Type, &ret))
+				      getK, &k9))
 			{
 				return NULL;
 			}
@@ -1172,26 +678,7 @@ K_knk(PyTypeObject *type, PyObject *args)
 		PyErr_BadArgument();
 		return NULL;
 	}
-	if (!r) {
-		return NULL;
-	}
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = r1(r);
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(r);
-		return NULL;
-	}
-	ret->_k = r1(r);
-	return (PyObject*)ret;
+	return KObject_FromK(type, r);
 }
 
 /*
@@ -1209,13 +696,10 @@ PyDoc_STRVAR(K_k_doc,
 static PyObject *
 K_k(PyTypeObject *type, PyObject *args)
 {
-	KObject *ret = 0;
-	I c;
-	char* m;
-	K r;
+	I c;char* m;K r;
 	switch (PyTuple_Size(args)-2) {
 	case 0: {
-		if (!PyArg_ParseTuple(args, "is|O!", &c, &m, &K_Type, &ret)) {
+		if (!PyArg_ParseTuple(args, "is", &c, &m)) {
 			return NULL;
 		}
 		r = k(c,m,(K)0);
@@ -1223,9 +707,8 @@ K_k(PyTypeObject *type, PyObject *args)
 	}
 	case 1: {
 		K k1;
-		if (!PyArg_ParseTuple(args, "isO&|O!", &c, &m,
-				      getK, &k1,
-				      &K_Type, &ret))
+		if (!PyArg_ParseTuple(args, "isO&", &c, &m,
+				      getK, &k1))
 			{
 				return NULL;
 			}
@@ -1234,10 +717,9 @@ K_k(PyTypeObject *type, PyObject *args)
 	}
 	case 2: {
 		K k1,k2;
-		if (!PyArg_ParseTuple(args, "isO&O&|O!", &c, &m,
+		if (!PyArg_ParseTuple(args, "isO&O&", &c, &m,
 				      getK, &k1,
-				      getK, &k2,
-				      &K_Type, &ret))
+				      getK, &k2))
 			{
 				return NULL;
 			}
@@ -1246,11 +728,10 @@ K_k(PyTypeObject *type, PyObject *args)
 	}
 	case 3: {
 		K k1,k2,k3;
-		if (!PyArg_ParseTuple(args, "isO&O&O&|O!", &c, &m,
+		if (!PyArg_ParseTuple(args, "isO&O&O&", &c, &m,
 				      getK, &k1,
 				      getK, &k2,
-				      getK, &k3,
-				      &K_Type, &ret))
+				      getK, &k3))
 			{
 				return NULL;
 			}
@@ -1259,12 +740,11 @@ K_k(PyTypeObject *type, PyObject *args)
 	}
 	case 4: {
 		K k1,k2,k3,k4;
-		if (!PyArg_ParseTuple(args, "isO&O&O&O&|O!", &c, &m,
+		if (!PyArg_ParseTuple(args, "isO&O&O&O&", &c, &m,
 				      getK, &k1,
 				      getK, &k2,
 				      getK, &k3,
-				      getK, &k4,
-				      &K_Type, &ret))
+				      getK, &k4))
 			{
 				return NULL;
 			}
@@ -1273,13 +753,12 @@ K_k(PyTypeObject *type, PyObject *args)
 	}
 	case 5: {
 		K k1,k2,k3,k4,k5;
-		if (!PyArg_ParseTuple(args, "isO&O&O&O&O&|O!", &c, &m,
+		if (!PyArg_ParseTuple(args, "isO&O&O&O&O&", &c, &m,
 				      getK, &k1,
 				      getK, &k2,
 				      getK, &k3,
 				      getK, &k4,
-				      getK, &k5,
-				      &K_Type, &ret))
+				      getK, &k5))
 			{
 				return NULL;
 			}
@@ -1288,14 +767,13 @@ K_k(PyTypeObject *type, PyObject *args)
 	}
 	case 6: {
 		K k1,k2,k3,k4,k5,k6;
-		if (!PyArg_ParseTuple(args, "isO&O&O&O&O&O&|O!", &c, &m,
+		if (!PyArg_ParseTuple(args, "isO&O&O&O&O&O&", &c, &m,
 				      getK, &k1,
 				      getK, &k2,
 				      getK, &k3,
 				      getK, &k4,
 				      getK, &k5,
-				      getK, &k6,
-				      &K_Type, &ret))
+				      getK, &k6))
 			{
 				return NULL;
 			}
@@ -1304,15 +782,14 @@ K_k(PyTypeObject *type, PyObject *args)
 	}
 	case 7: {
 		K k1,k2,k3,k4,k5,k6,k7;
-		if (!PyArg_ParseTuple(args, "isO&O&O&O&O&O&O&|O!", &c, &m,
+		if (!PyArg_ParseTuple(args, "isO&O&O&O&O&O&O&", &c, &m,
 				      getK, &k1,
 				      getK, &k2,
 				      getK, &k3,
 				      getK, &k4,
 				      getK, &k5,
 				      getK, &k6,
-				      getK, &k7,
-				      &K_Type, &ret))
+				      getK, &k7))
 			{
 				return NULL;
 			}
@@ -1321,7 +798,7 @@ K_k(PyTypeObject *type, PyObject *args)
 	}
 	case 8: {
 		K k1,k2,k3,k4,k5,k6,k7,k8;
-		if (!PyArg_ParseTuple(args, "isO&O&O&O&O&O&O&O&|O!", &c, &m,
+		if (!PyArg_ParseTuple(args, "isO&O&O&O&O&O&O&O&", &c, &m,
 				      getK, &k1,
 				      getK, &k2,
 				      getK, &k3,
@@ -1329,8 +806,7 @@ K_k(PyTypeObject *type, PyObject *args)
 				      getK, &k5,
 				      getK, &k6,
 				      getK, &k7,
-				      getK, &k8,
-				      &K_Type, &ret))
+				      getK, &k8))
 			{
 				return NULL;
 			}
@@ -1339,7 +815,7 @@ K_k(PyTypeObject *type, PyObject *args)
 	}
 	case 9: {
 		K k1,k2,k3,k4,k5,k6,k7,k8,k9;
-		if (!PyArg_ParseTuple(args, "isO&O&O&O&O&O&O&O&O&|O!", &c, &m,
+		if (!PyArg_ParseTuple(args, "isO&O&O&O&O&O&O&O&O&", &c, &m,
 				      getK, &k1,
 				      getK, &k2,
 				      getK, &k3,
@@ -1348,8 +824,7 @@ K_k(PyTypeObject *type, PyObject *args)
 				      getK, &k6,
 				      getK, &k7,
 				      getK, &k8,
-				      getK, &k9,
-				      &K_Type, &ret))
+				      getK, &k9))
 			{
 				return NULL;
 			}
@@ -1360,27 +835,7 @@ K_k(PyTypeObject *type, PyObject *args)
 		PyErr_BadArgument();
 		return NULL;
 	}
-	if (!r)
-		return PyErr_NoMemory();
-	if (r->t == -128)
-                return PyErr_Format(ErrorObject, "%s", r->s); 
-	if (ret) {
-		if (ret->_k) {
-			r0(ret->_k);
-		}
-		ret->_k = r;
-		Py_RETURN_NONE;
-	}
-	if (!type) {
-		type = &K_Type;
-	}
-	ret = (KObject*)type->tp_alloc(type, 0);
-	if (!ret) {
-		r0(r);
-		return NULL;
-	}
-	ret->_k = r;
-	return (PyObject*)ret;
+	return KObject_FromK(type, r);
 }
 
 
@@ -1393,7 +848,7 @@ PyDoc_STRVAR(K_inspect_doc,
 static PyObject *
 K_inspect(PyObject *self, PyObject *args)
 {
-	K k = ((KObject*)self)->_k;
+	K k = ((KObject*)self)->x;
 	if (!k) {
 		PyErr_SetString(PyExc_ValueError, "null k object");
 		return NULL;
@@ -1420,7 +875,7 @@ K_inspect(PyObject *self, PyObject *args)
 			  : k->t == KC
 			  ? PyString_FromStringAndSize((char*)kG(k), k->n)
 			  : PyString_FromFormat("<%p>", k->s));
-	case 'k': return KObject_FromK(self->ob_type, k->k);
+	case 'k': return KObject_FromK(self->ob_type, r1(k->k));
 		/* lists */
 	case 'G': return PyInt_FromLong(kG(k)[i]);
 	case 'H': return PyInt_FromLong(kH(k)[i]);
@@ -1431,13 +886,59 @@ K_inspect(PyObject *self, PyObject *args)
 	case 'S': return (k->t == KS
 			  ? PyString_FromString((char*)kS(k)[i])
 			  : PyString_FromFormat("<%p>", kS(k)[i]));
-	case 'K': return KObject_FromK(self->ob_type, kK(k)[i]);
+	case 'K': return KObject_FromK(self->ob_type, r1(kK(k)[i]));
 	}
-	return PyErr_Format(PyExc_KeyError, "no such attribute: '%c'", c);
+	return PyErr_Format(PyExc_KeyError, "no such field: '%c'", c);
+}
+
+/* Calling Python */
+ZK
+call_python_object(K type, K func, K x)
+{
+	I n; K *args, r;
+	if (type->t!=-KJ||func->t!=-KJ||xt<0||xt>=XT) R krr("type");
+	n = xn;
+	if (xt != 0) {
+		x = k(0, "(::),", x, (K)0);
+		args = xK+1;
+	}
+	else {
+		args = xK;
+	}	
+	PyObject* pyargs = PyTuple_New(n), *res;
+	DO(n, PyTuple_SET_ITEM(pyargs, i, 
+			       KObject_FromK((PyTypeObject*)type->k,r1(args[i]))));
+	res = PyObject_CallObject((PyObject*)func->k, pyargs);
+	Py_DECREF(pyargs); r0(x);
+	if(!res)
+		R krr("python");
+	r = K_Check(res)
+		? ((KObject*)res)->x
+		: krr("py-type");
+	Py_DECREF(res);
+	return r;
+}
+
+static PyObject *
+K_func(PyTypeObject *type, PyObject *func)
+{
+	K f = ka(112); /* dynamic load */
+	f->k = (K)call_python_object;
+	f->u = 3;
+	K kfunc = kj(0);
+	K ktype = kj(0);
+	Py_INCREF(type); Py_INCREF(func);
+	kfunc->k = r1((K)func);
+	ktype->k = r1((K)type);
+	K x = knk(3, f, ktype, kfunc);
+	xt = 104; /* projection */
+	return KObject_FromK(type, x);
 }
 
 static PyMethodDef 
 K_methods[] = {
+	{"_func", (PyCFunction)K_func,METH_O|METH_CLASS, "func"}, 
+	{"_dot", (PyCFunction)K_dot,  METH_O, "dot"},
 	{"_k",	(PyCFunction)K_k,  METH_VARARGS|METH_CLASS, K_k_doc},
 	{"_knk",(PyCFunction)K_knk, METH_VARARGS|METH_CLASS, K_knk_doc},
 	{"_ktd",(PyCFunction)K_ktd, METH_VARARGS|METH_CLASS, K_ktd_doc},
@@ -1468,11 +969,62 @@ K_methods[] = {
 	{NULL,		NULL}		/* sentinel */
 };
 
-static int
-K_init(KObject *self, PyObject *args, PyObject *kwds)
+typedef long Py_ssize_t;
+static Py_ssize_t
+K_buffer_getreadbuf(KObject *self, Py_ssize_t index, const void **ptr)
 {
-	return 0;
+        if ( index != 0 ) {
+                PyErr_SetString(PyExc_SystemError,
+                                "Accessing non-existent K object segment");
+                return -1;
+        }
+	K x = self->x;
+	switch (xt) {
+	case -KS:
+		*ptr = (void *)xs;
+		return strlen(xs);
+	case KC: case KG:
+		*ptr = (void *)xG;
+		return xn;
+	}
+	PyErr_Format(PyExc_NotImplementedError,
+		     "Buffer protocol not implemented for type %hd", xt);
+	return -1;
 }
+
+static Py_ssize_t
+K_buffer_getwritebuf(KObject *self, Py_ssize_t index, const void **ptr)
+{
+        if ( index != 0 ) {
+                PyErr_SetString(PyExc_SystemError,
+                                "Accessing non-existent K object segment");
+                return -1;
+        }
+	K x = self->x;
+	switch (xt) {
+	case KC: case KG:
+		*ptr = (void *)xG;
+		return xn;
+	}
+	PyErr_Format(PyExc_NotImplementedError,
+		     "Buffer protocol not implemented for type %hd", xt);
+	return -1;
+}
+
+static Py_ssize_t
+K_buffer_getsegcount(KObject *self, Py_ssize_t *lenp)
+{
+        if ( lenp )
+                *lenp = self->xn;
+        return 1;
+}
+
+static PyBufferProcs K_as_buffer = {
+        (getreadbufferproc)K_buffer_getreadbuf,
+        (getwritebufferproc)K_buffer_getwritebuf,
+        (getsegcountproc)K_buffer_getsegcount,
+        NULL,
+};
 
 static PyGetSetDef K_getset[] = {
 	{"__array_struct__", (getter)K_array_struct_get, NULL,
@@ -1488,7 +1040,7 @@ static PyTypeObject K_Type = {
 	 * to be portable to Windows without using C++. */
 	PyObject_HEAD_INIT(NULL)
 	0,			/*ob_size*/
-	XSTRINGIFY(MODULE_NAME) ".K",	         	/*tp_name*/
+	"_k.K",	         	/*tp_name*/
 	sizeof(KObject),	/*tp_basicsize*/
 	0,			/*tp_itemsize*/
 	/* methods */
@@ -1502,11 +1054,11 @@ static PyTypeObject K_Type = {
 	0,                      /*tp_as_sequence*/
 	0,			/*tp_as_mapping*/
 	0,			/*tp_hash*/
-        0,                      /*tp_call*/
-        K_str,                  /*tp_str*/
+        (ternaryfunc)K_call,    /*tp_call*/
+        (reprfunc)K_str,        /*tp_str*/
         0,                      /*tp_getattro*/
         0,                      /*tp_setattro*/
-        0,/*&K_as_buffer,         tp_as_buffer*/
+        &K_as_buffer,           /*tp_as_buffer*/
         Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,     /*tp_flags*/
         0,                      /*tp_doc*/
         0,                      /*tp_traverse*/
@@ -1523,7 +1075,7 @@ static PyTypeObject K_Type = {
         0,                      /*tp_descr_get*/
         0,                      /*tp_descr_set*/
         0,                      /*tp_dictoffset*/
-        (initproc)K_init,       /*tp_init*/
+        (initproc)0,            /*tp_init*/
         0,                      /*tp_alloc*/
         PyType_GenericNew,      /*tp_new*/
         0,                      /*tp_free*/
@@ -1616,14 +1168,14 @@ k_iter(KObject *obj)
 
 	Py_INCREF(obj);
 	it->obj = obj;
-	it->ptr = kG(obj->_k);
-	it->itemsize = k_itemsize(obj->_k);
+	it->ptr = kG(obj->x);
+	it->itemsize = k_itemsize(obj->x);
 	if (!it->itemsize) {
-		PyErr_Format(PyExc_NotImplementedError, "not iterable: t=%d", obj->_k->t);
+		PyErr_Format(PyExc_NotImplementedError, "not iterable: t=%d", obj->xt);
 		return NULL;
 	}
-	it->end = it->ptr + it->itemsize * obj->_k->n;
-	it->itemtype = obj->_k->t;
+	it->end = it->ptr + it->itemsize * obj->xn;
+	it->itemtype = obj->xt;
 	PyObject_GC_Track(it);
 	return (PyObject *)it;
 }
@@ -1639,7 +1191,7 @@ kiter_next(kiterobject *it)
 			ret = PyString_FromString(*(char**)it->ptr);
 			break;
 		case 0:
-			ret = KObject_FromK(it->obj->ob_type, *(K*)it->ptr);
+			ret = KObject_FromK(it->obj->ob_type, r1(*(K*)it->ptr));
 			break;
 		/* remaining cases are less common because array(x) *
 		 * is a better option that list(x)                  */
@@ -1724,10 +1276,8 @@ static PyTypeObject KObjectIter_Type = {
 };
 
 /* Initialization function for the module (*must* be called init_k) */
-#define INIT(x) init ## x
-#define XINIT(x) INIT(x)
 PyMODINIT_FUNC
-XINIT(MODULE_NAME)(void)
+init_k(void)
 {
 	PyObject *m;
 	/* PyObject* c_api_object; */
@@ -1739,12 +1289,12 @@ XINIT(MODULE_NAME)(void)
 		return;
 
 	/* Create the module and add the functions */
-	m = Py_InitModule3(XSTRINGIFY(MODULE_NAME), _k_methods, module_doc);
+	m = Py_InitModule3("_k", _k_methods, module_doc);
 	if (!m)
 		return;
 	/* Add some symbolic constants to the module */
 	if (ErrorObject == NULL) {
-	  ErrorObject = PyErr_NewException(XSTRINGIFY(MODULE_NAME) ".error", NULL, NULL);
+	  ErrorObject = PyErr_NewException("_k.error", NULL, NULL);
 		if (ErrorObject == NULL)
 			return;
 	}
