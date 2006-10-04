@@ -1,5 +1,5 @@
 /* -*- mode: c; c-basic-offset: 8 -*- */
-static char __version__[] = "$Revision: 1.27 $";
+static char __version__[] = "$Revision: 1.35 $";
 /*
   K object layout (32 bit):
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6
@@ -39,6 +39,12 @@ static PyTypeObject K_Type;
 #include <ctype.h>
 #ifndef  Py_RETURN_NONE
 #   define Py_RETURN_NONE Py_INCREF(Py_None); return Py_None
+#endif
+#if PY_VERSION_HEX < 0x2050000
+typedef int Py_ssize_t;
+typedef Py_ssize_t (*readbufferproc)(PyObject *, Py_ssize_t, void **);
+typedef Py_ssize_t (*writebufferproc)(PyObject *, Py_ssize_t, void **);
+typedef Py_ssize_t (*segcountproc)(PyObject *, Py_ssize_t *);
 #endif
 
 PyDoc_STRVAR(module_doc,
@@ -85,14 +91,15 @@ KObject_FromK(PyTypeObject *type, K x)
 {
 	if (!type) 
 		type = &K_Type;
-	if (!x) 
-		return PyErr_Format(PyExc_ValueError, "null k object");
-	if (xt == -128)
-		return PyErr_Format(ErrorObject, xs),r0(x),NULL; 
-	if (xt == 101 && xi == 0) {
-		r0(x);
-		Py_RETURN_NONE;
+	if (!x) {
+		extern void clr(void);
+		extern char* es;
+		PyErr_SetString(ErrorObject, es);
+		clr();
+		return NULL;
 	}
+	if (xt == -128)
+		return PyErr_Format(ErrorObject, xs),r0(x),NULL;
 	KObject *self = (KObject*)type->tp_alloc(type, 0);
 	if (self)
 		self->x = x;
@@ -132,6 +139,36 @@ K_dot(KObject *self, PyObject *args)
 				dot(self->x, ((KObject*)args)->x))
 		: PyErr_Format(PyExc_TypeError, "expected a K object, not %s",
 			       args->ob_type->tp_name);
+}
+
+extern K a1(K,K);
+static PyObject*
+K_a1(KObject *self, PyObject *arg)
+{
+	R K_Check(arg)
+		? KObject_FromK(self->ob_type, a1(self->x, ((KObject*)arg)->x))
+		: PyErr_Format(PyExc_TypeError, "expected a K object, not %s",
+			       arg->ob_type->tp_name);
+}
+
+extern K a2(K,K,K);
+static PyObject*
+K_a2(KObject *self, PyObject *args)
+{
+	K x, y;
+	if (PyArg_ParseTuple(args, "O&O&", &getK, &x, &getK, &y))
+		R KObject_FromK(self->ob_type, a2(self->x, x, y));
+	return NULL;
+}
+
+extern K a3(K,K,K,K);
+static PyObject*
+K_a3(KObject *self, PyObject *args)
+{
+	K x, y, z;
+	if (PyArg_ParseTuple(args, "O&O&O&", &getK, &x, &getK, &y, &getK, &z))
+		R KObject_FromK(self->ob_type, a3(self->x, x, y, z));
+	return NULL;
 }
 
 static PyObject*
@@ -896,8 +933,10 @@ ZK
 call_python_object(K type, K func, K x)
 {
 	I n; K *args, r;
-	if (type->t!=-KJ||func->t!=-KJ||xt<0||xt>=XT) R krr("type");
-	n = xn;
+	if (type->t!=-KJ||func->t!=-KJ||xt<0||xt>=XT) {
+		R krr("type error");
+	}
+	n = xn; r1(x);
 	if (xt != 0) {
 		x = k(0, "(::),", x, (K)0);
 		args = xK+1;
@@ -911,25 +950,31 @@ call_python_object(K type, K func, K x)
 	res = PyObject_CallObject((PyObject*)func->k, pyargs);
 	Py_DECREF(pyargs); r0(x);
 	if(!res)
-		R krr("python");
+		R krr("error in python");
 	r = K_Check(res)
-		? ((KObject*)res)->x
-		: krr("py-type");
+		? r1(((KObject*)res)->x)
+		: krr("py-type error");
 	Py_DECREF(res);
 	return r;
+}
+
+ZK
+kl(H n, V* cfunc)
+{
+	K x = ka(112);
+	xu = n;
+	xk = cfunc;
+	R x;
 }
 
 static PyObject *
 K_func(PyTypeObject *type, PyObject *func)
 {
-	K f = ka(112); /* dynamic load */
-	f->k = (K)call_python_object;
-	f->u = 3;
+	K f = kl(3, call_python_object);
 	K kfunc = kj(0);
 	K ktype = kj(0);
-	Py_INCREF(type); Py_INCREF(func);
-	kfunc->k = r1((K)func);
-	ktype->k = r1((K)type);
+	kfunc->k = (K)func;
+	ktype->k = (K)type;
 	K x = knk(3, f, ktype, kfunc);
 	xt = 104; /* projection */
 	return KObject_FromK(type, x);
@@ -939,6 +984,9 @@ static PyMethodDef
 K_methods[] = {
 	{"_func", (PyCFunction)K_func,METH_O|METH_CLASS, "func"}, 
 	{"_dot", (PyCFunction)K_dot,  METH_O, "dot"},
+	{"_a1", (PyCFunction)K_a1,  METH_O, "a1"},
+	{"_a2", (PyCFunction)K_a2,  METH_VARARGS, "a2"},
+	{"_a3", (PyCFunction)K_a3,  METH_VARARGS, "a3"},
 	{"_k",	(PyCFunction)K_k,  METH_VARARGS|METH_CLASS, K_k_doc},
 	{"_knk",(PyCFunction)K_knk, METH_VARARGS|METH_CLASS, K_knk_doc},
 	{"_ktd",(PyCFunction)K_ktd, METH_VARARGS|METH_CLASS, K_ktd_doc},
@@ -969,7 +1017,6 @@ K_methods[] = {
 	{NULL,		NULL}		/* sentinel */
 };
 
-typedef long Py_ssize_t;
 static Py_ssize_t
 K_buffer_getreadbuf(KObject *self, Py_ssize_t index, const void **ptr)
 {
@@ -1020,9 +1067,9 @@ K_buffer_getsegcount(KObject *self, Py_ssize_t *lenp)
 }
 
 static PyBufferProcs K_as_buffer = {
-        (getreadbufferproc)K_buffer_getreadbuf,
-        (getwritebufferproc)K_buffer_getwritebuf,
-        (getsegcountproc)K_buffer_getsegcount,
+        (readbufferproc)K_buffer_getreadbuf,
+        (writebufferproc)K_buffer_getwritebuf,
+        (segcountproc)K_buffer_getsegcount,
         NULL,
 };
 
@@ -1184,7 +1231,6 @@ static PyObject *
 kiter_next(kiterobject *it)
 {
 	PyObject *ret = NULL;
-	assert(PyArrayIter_Check(it));
 	if (it->ptr < it->end)
 		switch (it->itemtype) {
 		case KS: /* most common case: use list(ks) */
@@ -1275,6 +1321,7 @@ static PyTypeObject KObjectIter_Type = {
 	0,					/* tp_methods */
 };
 
+static void k3io_init(void);
 /* Initialization function for the module (*must* be called init_k) */
 PyMODINIT_FUNC
 init_k(void)
@@ -1325,4 +1372,206 @@ init_k(void)
 
 	PyModule_AddIntConstant(m, "SIZEOF_VOID_P", SIZEOF_VOID_P);
 	PyModule_AddStringConstant(m, "__version__", __version__);
+	k3io_init();
 }
+
+
+/* k3io - read and write kdb tables */
+/* could be implemented as a loadable q module, but keeping it here
+   saves an extra compilation unit and simplifies installation        */
+#include <stddef.h>
+
+struct header {
+	I dummy[2];
+	I type; 
+	I length;
+};
+/* q types of k types */
+ZH tt[]={0,KI,KF,KC,KS};
+#undef NDEBUG
+ZS
+k3io_read_symbol(FILE* f)
+{
+	char buf[1024], *p = buf;
+	while((*p++ = getc(f))) assert(p < buf + sizeof(buf));
+	R sn(buf, p-buf-1);
+}
+
+ZK /* read atom from a stream */
+k3io_read_atom(I t, FILE* f)
+{
+	K x = ka(-tt[t]);
+	switch (t) {
+	case 1:
+		fread(&xi, sizeof(xi), 1, f);
+		break;
+	case 2:
+		fseek(f, 4, SEEK_CUR);
+		fread(&xf, sizeof(xf), 1, f);
+		break;
+	case 3:
+		fread(&xg, sizeof(xg), 1, f);
+		break;
+	case 4: 
+		xs = k3io_read_symbol(f);
+		break;
+	}
+	R x;
+}
+
+ZK /* read vector from a stream */
+k3io_read_vector(I t, I n, FILE* f)
+{
+	K x = ktn(tt[-t], n);
+	switch (t) {
+	case -1:
+		fread(xI, sizeof(xi), n, f);
+		break;
+	case -2:
+		fread(xF, sizeof(xf), n, f);
+		break;
+	case -3:
+		fread(xG, sizeof(xg), n, f);
+		break;
+	case -4:
+		DO(n,
+		   G buf[1024];A p = buf;
+		   while((*p++ = getc(f)));
+		   xS[i] = sn(buf, p-buf-1));
+		break;
+	}
+	R x;
+}
+
+ZV /* skip to the 8 byte boundary */
+k3io_next_object(FILE *f)
+{
+	fseek(f, ~7&(7+ftell(f)), SEEK_SET);
+}
+
+ZK
+k3io_read_attrs(FILE* f)
+{
+	K x;
+	struct header h;
+	fread(&h, offsetof(struct header, length), 1, f);
+	if (h.type == 6)
+		x = k(0, "::", (K)0);
+	else {
+		I n, i;
+		fread(&n, 4, 1, f);
+		x = xD(ktn(KS,n), ktn(0,n));
+		for(i = 0; i < n ; ++i) {
+			fread(&h, sizeof(h), 1, f);
+			fread(&h, offsetof(struct header, length), 1, f);
+			kS(xx)[i] = k3io_read_symbol(f);
+			k3io_next_object(f);
+			fread(&h, offsetof(struct header, length), 1, f);
+			if (h.type < 0) {
+				fread(&h.length, 4, 1, f);
+				kK(xy)[i] = k3io_read_vector(h.type, h.length, f);
+			}
+			else 
+				kK(xy)[i] = k3io_read_atom(h.type, f);
+			k3io_next_object(f);
+			fread(&h, sizeof(h), 1, f);
+		}
+	}
+	k3io_next_object(f);
+	R x;
+}
+
+ZK
+k3io_read_table(K x)
+{
+	struct header h;
+	FILE *f;
+	if (xt != -KS)
+		R krr("k3io_read_table: type");
+	if (!(f = fopen(xs, "r")))
+		R orr("k3io_read_table");
+	if (1 != fread(&h, sizeof(h), 1, f)) {
+		x = krr("k3io_read_table: format short");
+		goto end;
+	}
+	if (h.dummy[0] != -3 || h.dummy[1] != 1 || h.type != 5) {
+		x = krr("k3io_read_table: format data");
+		goto end;
+	}
+	x = xD(ktn(KS,h.length), ktn(0,h.length));
+	I i, n = h.length;
+	for (i = 0; i < n; ++i) {
+		K v, d;
+		fread(&h, sizeof(h), 1, f);
+		fread(&h, offsetof(struct header, length), 1, f);
+		kS(xx)[i] = k3io_read_symbol(f);
+		k3io_next_object(f);
+		fread(&h, sizeof(h), 1, f);
+		v = k3io_read_vector(h.type, h.length, f);
+		k3io_next_object(f);
+		d = k3io_read_attrs(f); 
+		kK(xy)[i] = k(0, ".k3.convert", r1(v), r1(d), (K)0);
+	}
+	x = xT(x);
+ end:
+	fclose(f);
+	R x;
+}
+
+ZK
+k3io_read_splayed(K x)
+{
+	struct header h;
+	FILE *f, *g; K buf;
+	if (xt != -KS)
+		R krr("k3io_read_splayed: type");
+	size_t dlen = strlen(xs);
+	S dir = xs; 
+	buf = ktn(KC,dlen+4);
+	if (!(f = fopen(strcat(strcpy(kC(buf), dir), "/.l"), "r")))
+		R orr("k3io_read_splayed");
+	r0(buf);
+	if (1 != fread(&h, sizeof(h), 1, f)) {
+		x = krr("k3io_read_splayed: format short");
+		goto end;
+	}
+	if (h.dummy[0] != -3 || h.dummy[1] != 1 || h.type != 0 || h.length != 2) {
+		x = krr("k3io_read_table: format data");
+		goto end;
+	}
+	fread(&h, sizeof(h), 1, f);
+	x = xD(NULL, ktn(0,h.length));
+	xx = k3io_read_vector(h.type, h.length, f);
+	k3io_next_object(f);
+	fread(&h, sizeof(h), 1, f);
+	I i, n = h.length;
+	for (i = 0; i < n; ++i) {
+		K v, d;
+		S col = kS(xx)[i];
+		buf = ktn(KC,dlen+2+strlen(col));
+		g =  fopen(strcat(strcat(strcat(strcpy(kC(buf),dir),"/"),col),".l"), "r");
+		r0(buf);
+		fread(&h, sizeof(h), 1, g);
+		v = k3io_read_vector(h.type, h.length, g);
+		fclose(g);
+		k3io_next_object(f);
+		d = k3io_read_attrs(f);
+		kK(xy)[i] = k(0, ".k3.convert", r1(v), r1(d), (K)0);
+	}
+	x = xT(x);
+ end:
+	fclose(f);
+	R x;
+}
+
+void
+k3io_init(void)
+{
+	k(0, "{.k3.rt::x}", r1(kl(1, k3io_read_table)), (K)0);
+	k(0, "{.k3.rs::x}", r1(kl(1, k3io_read_splayed)), (K)0);
+	k(0, ".k3.convert:{"
+	  "C:`date`time!(2035.01.01+;::);"
+	  "$[(::)~y;x;$[null c:y`T;x;C[c]x]]}", (K)0);
+}
+
+/* k3io end */
