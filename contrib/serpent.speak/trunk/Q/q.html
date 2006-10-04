@@ -1,0 +1,331 @@
+
+<!doctype html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module q</title>
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>q</strong></big></big> (version 1.16)</font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="/trac/browser/contrib/serpent.speak/trunk/Q/q.py">contrib/serpent.speak/trunk/Q/q.py</a></font></td></tr></table>
+    <p><tt>Python&nbsp;interface&nbsp;to&nbsp;the&nbsp;Q&nbsp;language<br>
+&nbsp;<br>
+The&nbsp;following&nbsp;examples&nbsp;are&nbsp;adapted&nbsp;from&nbsp;the&nbsp;"Kdb+&nbsp;Database&nbsp;and&nbsp;Language&nbsp;Primer"<br>
+by&nbsp;Dennis&nbsp;Shasha&nbsp;&lt;<a href="http://kx.com/q/d/primer.htm">http://kx.com/q/d/primer.htm</a>&gt;<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;y&nbsp;=&nbsp;q('(`aaa;&nbsp;`bbbdef;&nbsp;`c)');&nbsp;y[0]<br>
+<a href="#-k">k</a>('`aaa')<br>
+&nbsp;<br>
+Unlike&nbsp;in&nbsp;Q,&nbsp;in&nbsp;python&nbsp;function&nbsp;call&nbsp;syntax&nbsp;uses&nbsp;'()'&nbsp;and<br>
+indexing&nbsp;uses&nbsp;'[]':<br>
+&gt;&gt;&gt;&nbsp;z&nbsp;=&nbsp;q('(`abc;&nbsp;10&nbsp;20&nbsp;30;&nbsp;(`a;&nbsp;`b);&nbsp;50&nbsp;60&nbsp;61)')<br>
+&gt;&gt;&gt;&nbsp;z(2,&nbsp;0)<br>
+<a href="#-k">k</a>('`a')<br>
+&gt;&gt;&gt;&nbsp;z[q('0&nbsp;2')]&nbsp;#&nbsp;XXX:&nbsp;Should&nbsp;be&nbsp;able&nbsp;to&nbsp;write&nbsp;this&nbsp;as&nbsp;z[0,2]<br>
+<a href="#-k">k</a>('(`abc;`a`b)')<br>
+&nbsp;<br>
+&nbsp;<br>
+Dictionaries<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;fruitcolor&nbsp;=&nbsp;q('`cherry`plum`tomato!`brightred`violet`brightred')<br>
+&gt;&gt;&gt;&nbsp;fruitcolor['plum']<br>
+<a href="#-k">k</a>('`violet')<br>
+&gt;&gt;&gt;&nbsp;fruitcolor2&nbsp;=&nbsp;q('`grannysmith`plum`prune!`green`reddish`black')<br>
+&gt;&gt;&gt;&nbsp;q(',',&nbsp;fruitcolor,&nbsp;fruitcolor2)<br>
+<a href="#-k">k</a>('`cherry`plum`tomato`grannysmith`prune!`brightred`reddish`brightred`green`black')<br>
+&nbsp;<br>
+Tables&nbsp;from&nbsp;Dictionaries<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;d&nbsp;=&nbsp;q('`name`salary!&nbsp;(`tom`dick`harry;30&nbsp;30&nbsp;35)&nbsp;')<br>
+&gt;&gt;&gt;&nbsp;e&nbsp;=&nbsp;q.flip(d)<br>
+&gt;&gt;&gt;&nbsp;e[1]<br>
+<a href="#-k">k</a>('`name`salary!(`dick;30)')<br>
+&gt;&gt;&gt;&nbsp;q('{select&nbsp;name&nbsp;from&nbsp;x}',&nbsp;e)<br>
+<a href="#-k">k</a>('+(,`name)!,`tom`dick`harry')<br>
+&gt;&gt;&gt;&nbsp;q('{select&nbsp;sum&nbsp;salary&nbsp;from&nbsp;x}',&nbsp;e).salary<br>
+<a href="#-k">k</a>(',95')<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;e2&nbsp;=&nbsp;q.xkey('name',&nbsp;e)<br>
+&gt;&gt;&gt;&nbsp;q('+',&nbsp;e2,&nbsp;e2)<br>
+<a href="#-k">k</a>('(+(,`name)!,`tom`dick`harry)!+(,`salary)!,60&nbsp;60&nbsp;70')<br>
+&gt;&gt;&gt;&nbsp;q.keys(e2)<br>
+<a href="#-k">k</a>(',`name')<br>
+&gt;&gt;&gt;&nbsp;q.cols(e2)<br>
+<a href="#-k">k</a>('`name`salary')<br>
+&nbsp;<br>
+Temporal&nbsp;Primitives<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;x&nbsp;=&nbsp;datetime(2004,7,3,16,35,24,980000)<br>
+&gt;&gt;&gt;&nbsp;<a href="#K">K</a>(x)<br>
+<a href="#-k">k</a>('2004.07.03T16:35:24.980')<br>
+&gt;&gt;&gt;&nbsp;<a href="#K">K</a>(x.date()),&nbsp;<a href="#K">K</a>(x.time())<br>
+(<a href="#-k">k</a>('2004.07.03'),&nbsp;<a href="#-k">k</a>('16:35:24.980'))<br>
+&nbsp;<br>
+Input/Output<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;import&nbsp;os<br>
+&gt;&gt;&gt;&nbsp;r,w&nbsp;=&nbsp;os.pipe()<br>
+&gt;&gt;&gt;&nbsp;h&nbsp;=&nbsp;<a href="#K">K</a>(w)(<a href="#-kp">kp</a>("xyz"))<br>
+&gt;&gt;&gt;&nbsp;os.read(r,&nbsp;100)<br>
+'xyz'<br>
+&gt;&gt;&gt;&nbsp;os.close(r);&nbsp;os.close(w)</tt></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#fffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="_k.html">_k</a><br>
+</td><td width="25%" valign=top></td><td width="25%" valign=top></td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="_k.html#K">_k.K</a>(<a href="__builtin__.html#object">__builtin__.object</a>)
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial"><a href="q.html#K">K</a>
+</font></dt></dl>
+</dd>
+</dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="K">class <strong>K</strong></a>(<a href="_k.html#K">_k.K</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>a&nbsp;handle&nbsp;to&nbsp;q&nbsp;objects<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;<a href="#-k">k</a>('2005.01.01&nbsp;2005.12.04')<br>
+<a href="#-k">k</a>('2005.01.01&nbsp;2005.12.04')<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;list(q("`a`b`c`d"))<br>
+['a',&nbsp;'b',&nbsp;'c',&nbsp;'d']<br>
+&nbsp;<br>
+Buffer&nbsp;protocol:<br>
+&gt;&gt;&gt;&nbsp;x&nbsp;=&nbsp;<a href="#-kp">kp</a>('xxxxxx')<br>
+&gt;&gt;&gt;&nbsp;import&nbsp;os;&nbsp;r,w&nbsp;=&nbsp;os.pipe()<br>
+&gt;&gt;&gt;&nbsp;os.write(w,&nbsp;'abcdef')&nbsp;==&nbsp;os.fdopen(r).readinto(x)<br>
+True<br>
+&gt;&gt;&gt;&nbsp;os.close(w);&nbsp;x<br>
+<a href="#-k">k</a>('"abcdef"')<br>
+&nbsp;<br>
+Array&nbsp;protocol:<br>
+&gt;&gt;&gt;&nbsp;','.join([<a href="#-k">k</a>(x).__array_typestr__<br>
+...&nbsp;&nbsp;for&nbsp;x&nbsp;in&nbsp;('0b;0x00;0h;0;0j;0e;0.0;"&nbsp;";`;2000.01m;2000.01.01;'<br>
+...&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'2000.01.01T00:00:00.000;00:00;00:00:00;00:00:00.000')<br>
+...&nbsp;&nbsp;.split(';')])<br>
+'&lt;b1,&lt;u1,&lt;i2,&lt;i4,&lt;i8,&lt;f4,&lt;f8,&lt;S1,|O8,&lt;i4,&lt;i4,&lt;f8,&lt;i4,&lt;i4,&lt;f8'<br>
+&nbsp;<br>
+Low&nbsp;level&nbsp;interface<br>
+-------------------<br>
+&nbsp;<br>
+The&nbsp;<a href="#K">K</a>&nbsp;type&nbsp;provides&nbsp;a&nbsp;set&nbsp;of&nbsp;low&nbsp;level&nbsp;functions&nbsp;that&nbsp;are&nbsp;similar<br>
+to&nbsp;the&nbsp;C&nbsp;API&nbsp;provided&nbsp;by&nbsp;the&nbsp;k.h&nbsp;header.&nbsp;The&nbsp;C&nbsp;API&nbsp;functions&nbsp;that<br>
+return&nbsp;<a href="#K">K</a>&nbsp;objects&nbsp;in&nbsp;C&nbsp;are&nbsp;implemented&nbsp;as&nbsp;class&nbsp;methods&nbsp;that&nbsp;return<br>
+instances&nbsp;of&nbsp;<a href="#K">K</a>&nbsp;type.<br>
+&nbsp;<br>
+Atoms:<br>
+&gt;&gt;&gt;&nbsp;<a href="#K">K</a>._kb(True),&nbsp;<a href="#K">K</a>._kg(5),&nbsp;<a href="#K">K</a>._kh(42),&nbsp;<a href="#K">K</a>._ki(-3),&nbsp;<a href="#K">K</a>._kj(2**40),&nbsp;<a href="#K">K</a>._ke(3.5)<br>
+(<a href="#-k">k</a>('1b'),&nbsp;<a href="#-k">k</a>('0x05'),&nbsp;<a href="#-k">k</a>('42h'),&nbsp;<a href="#-k">k</a>('-3'),&nbsp;<a href="#-k">k</a>('1099511627776j'),&nbsp;<a href="#-k">k</a>('3.5e'))<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;<a href="#K">K</a>._kf(1.0),&nbsp;<a href="#K">K</a>._kc('x'),&nbsp;<a href="#K">K</a>._ks('xyz')<br>
+(<a href="#-k">k</a>('1f'),&nbsp;<a href="#-k">k</a>('"x"'),&nbsp;<a href="#-k">k</a>('`xyz'))<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;<a href="#K">K</a>._kd(0),&nbsp;<a href="#K">K</a>._kz(0.0),&nbsp;<a href="#K">K</a>._kt(0)<br>
+(<a href="#-k">k</a>('2000.01.01'),&nbsp;<a href="#-k">k</a>('2000.01.01T00:00:00.000'),&nbsp;<a href="#-k">k</a>('00:00:00.000'))<br>
+&nbsp;<br>
+&nbsp;<br>
+Tables&nbsp;and&nbsp;dictionaries:<br>
+&gt;&gt;&gt;&nbsp;x&nbsp;=&nbsp;<a href="#K">K</a>._xD(<a href="#-k">k</a>('`a`b`c'),&nbsp;<a href="#-k">k</a>('1&nbsp;2&nbsp;3'));&nbsp;x,&nbsp;<a href="#K">K</a>._xT(x)<br>
+(<a href="#-k">k</a>('`a`b`c!1&nbsp;2&nbsp;3'),&nbsp;<a href="#-k">k</a>('+`a`b`c!1&nbsp;2&nbsp;3'))<br>
+&nbsp;<br>
+Keyed&nbsp;table:<br>
+&gt;&gt;&gt;&nbsp;t&nbsp;=&nbsp;<a href="#K">K</a>._xD(<a href="#K">K</a>._xT(<a href="#K">K</a>._xD(<a href="#-k">k</a>(",`a"),&nbsp;<a href="#-k">k</a>(",1&nbsp;2&nbsp;3"))),<br>
+...&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#K">K</a>._xT(<a href="#K">K</a>._xD(<a href="#-k">k</a>(",`b"),&nbsp;<a href="#-k">k</a>(",10&nbsp;20&nbsp;30"))))<br>
+&gt;&gt;&gt;&nbsp;<a href="#K">K</a>._ktd(t)<br>
+<a href="#-k">k</a>('+`a`b!(1&nbsp;2&nbsp;3;10&nbsp;20&nbsp;30)')<br>
+&nbsp;<br>
+&nbsp;<br>
+Q&nbsp;objects&nbsp;can&nbsp;be&nbsp;used&nbsp;in&nbsp;Python&nbsp;arithmetic&nbsp;expressions<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;x,y,z&nbsp;=&nbsp;map(<a href="#K">K</a>,&nbsp;(1,2,3))<br>
+&gt;&gt;&gt;&nbsp;print&nbsp;x&nbsp;+&nbsp;y,&nbsp;x&nbsp;*&nbsp;y,&nbsp;z/y,&nbsp;x|y,&nbsp;x&amp;y<br>
+3&nbsp;2&nbsp;1.5&nbsp;2&nbsp;1<br>
+&nbsp;<br>
+Mixing&nbsp;Q&nbsp;objects&nbsp;with&nbsp;python&nbsp;numbers&nbsp;is&nbsp;allowed<br>
+&gt;&gt;&gt;&nbsp;1/q('1&nbsp;2&nbsp;4')<br>
+<a href="#-k">k</a>('1&nbsp;0.5&nbsp;0.25')<br>
+&gt;&gt;&gt;&nbsp;q.til(5)**2<br>
+<a href="#-k">k</a>('0&nbsp;1&nbsp;4&nbsp;9&nbsp;16f')<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%"><dl><dt>Method resolution order:</dt>
+<dd><a href="q.html#K">K</a></dd>
+<dd><a href="_k.html#K">_k.K</a></dd>
+<dd><a href="__builtin__.html#object">__builtin__.object</a></dd>
+</dl>
+<hr>
+Methods defined here:<br>
+<strong>__add__</strong> = k('+')
+<strong>__and__</strong> = k('&amp;')
+<dl><dt><a name="K-__call__"><strong>__call__</strong></a>(self, *args)</dt><dd><tt>call&nbsp;the&nbsp;k&nbsp;object<br>
+&nbsp;<br>
+Arguments&nbsp;are&nbsp;automatically&nbsp;converted&nbsp;to&nbsp;appropriate&nbsp;k&nbsp;objects<br>
+&gt;&gt;&gt;&nbsp;<a href="#-k">k</a>('+')(date(1999,12,31),&nbsp;2)<br>
+<a href="#-k">k</a>('2000.01.02')<br>
+&nbsp;<br>
+Strings&nbsp;are&nbsp;converted&nbsp;into&nbsp;symbols,&nbsp;use&nbsp;kp&nbsp;to&nbsp;convert&nbsp;to&nbsp;char<br>
+vectors:<br>
+&gt;&gt;&gt;&nbsp;map(<a href="#-k">k</a>('{x}'),&nbsp;('abc',&nbsp;<a href="#-kp">kp</a>('abc')))<br>
+[<a href="#-k">k</a>('`abc'),&nbsp;<a href="#-k">k</a>('"abc"')]</tt></dd></dl>
+
+<dl><dt><a name="K-__contains__"><strong>__contains__</strong></a>(self, item)</dt><dd><tt>membership&nbsp;test<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;1&nbsp;in&nbsp;q('1&nbsp;2&nbsp;3')<br>
+True<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;'abc'&nbsp;not&nbsp;in&nbsp;q('(1;2.0;`abc)')<br>
+False</tt></dd></dl>
+
+<strong>__div__</strong> = k('%')
+<dl><dt><a name="K-__eq__"><strong>__eq__</strong></a>(self, other)</dt><dd><tt>&gt;&gt;&gt;&nbsp;<a href="#K">K</a>(1)&nbsp;==&nbsp;<a href="#K">K</a>(2)<br>
+False</tt></dd></dl>
+
+<dl><dt><a name="K-__float__"><strong>__float__</strong></a>(self)</dt><dd><tt>converts&nbsp;<a href="#K">K</a>&nbsp;scalars&nbsp;to&nbsp;python&nbsp;float<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;map(float,&nbsp;map(q,&nbsp;'1b&nbsp;2h&nbsp;3&nbsp;4e&nbsp;`5&nbsp;6.0&nbsp;2000.01.08'.split()))<br>
+[1.0,&nbsp;2.0,&nbsp;3.0,&nbsp;4.0,&nbsp;5.0,&nbsp;6.0,&nbsp;7.0]</tt></dd></dl>
+
+<dl><dt><a name="K-__get__"><strong>__get__</strong></a>(self, client, cls)</dt><dd><tt>allow&nbsp;<a href="#K">K</a>&nbsp;objects&nbsp;use&nbsp;as&nbsp;descriptors</tt></dd></dl>
+
+<dl><dt><a name="K-__getattr__"><strong>__getattr__</strong></a>(self, a)</dt><dd><tt>table&nbsp;columns&nbsp;can&nbsp;be&nbsp;accessed&nbsp;via&nbsp;dot&nbsp;notation<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;q("([]a:1&nbsp;2&nbsp;3;&nbsp;b:10&nbsp;20&nbsp;30)").a<br>
+<a href="#-k">k</a>('1&nbsp;2&nbsp;3')<br>
+&gt;&gt;&gt;&nbsp;q("([a:1&nbsp;2&nbsp;3]b:10&nbsp;20&nbsp;30)").b<br>
+<a href="#-k">k</a>('10&nbsp;20&nbsp;30')</tt></dd></dl>
+
+<dl><dt><a name="K-__getitem__"><strong>__getitem__</strong></a>(self, x)</dt><dd><tt>&gt;&gt;&gt;&nbsp;<a href="#-k">k</a>("10&nbsp;20&nbsp;30&nbsp;40&nbsp;50")[<a href="#-k">k</a>("1&nbsp;3")]<br>
+<a href="#-k">k</a>('20&nbsp;40')<br>
+&gt;&gt;&gt;&nbsp;<a href="#-k">k</a>("`a`b`c!1&nbsp;2&nbsp;3")['b']<br>
+<a href="#-k">k</a>('2')</tt></dd></dl>
+
+<dl><dt><a name="K-__int__"><strong>__int__</strong></a>(self)</dt><dd><tt>converts&nbsp;<a href="#K">K</a>&nbsp;scalars&nbsp;to&nbsp;python&nbsp;int<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;map(int,&nbsp;map(q,&nbsp;'1b&nbsp;2h&nbsp;3&nbsp;4e&nbsp;`5&nbsp;6.0&nbsp;2000.01.08'.split()))<br>
+[1,&nbsp;2,&nbsp;3,&nbsp;4,&nbsp;5,&nbsp;6,&nbsp;7]</tt></dd></dl>
+
+<dl><dt><a name="K-__len__"><strong>__len__</strong></a>(self)</dt><dd><tt>the&nbsp;length&nbsp;of&nbsp;the&nbsp;object<br>
+&gt;&gt;&gt;&nbsp;len(q("1&nbsp;2&nbsp;3"))<br>
+3</tt></dd></dl>
+
+<strong>__mod__</strong> = k('')
+<strong>__mul__</strong> = k('*')
+<dl><dt><a name="K-__ne__"><strong>__ne__</strong></a>(self, other)</dt><dd><tt>&gt;&gt;&gt;&nbsp;<a href="#K">K</a>(1)&nbsp;!=&nbsp;<a href="#K">K</a>(2)<br>
+True</tt></dd></dl>
+
+<strong>__neg__</strong> = k('-:')
+<dl><dt><a name="K-__nonzero__"><strong>__nonzero__</strong></a>(self)</dt></dl>
+
+<strong>__or__</strong> = k('|')
+<strong>__pos__</strong> = k('+:')
+<strong>__pow__</strong> = k('')
+<strong>__radd__</strong> = k('+')
+<strong>__rand__</strong> = k('&amp;')
+<strong>__rdiv__</strong> = k('{y%x}')
+<dl><dt><a name="K-__repr__"><strong>__repr__</strong></a>(self)</dt></dl>
+
+<strong>__rmod__</strong> = k('')
+<strong>__rmul__</strong> = k('*')
+<strong>__ror__</strong> = k('|')
+<strong>__rpow__</strong> = k('')
+<strong>__rsub__</strong> = k('-')
+<dl><dt><a name="K-__str__"><strong>__str__</strong></a>(self)</dt><dd><tt>implements&nbsp;str(x)<br>
+&nbsp;<br>
+Symbols&nbsp;and&nbsp;character&nbsp;arrays&nbsp;are&nbsp;unchanged<br>
+&gt;&gt;&gt;&nbsp;map(str,&nbsp;[q('`abc'),&nbsp;q('"def"')])<br>
+['abc',&nbsp;'def']</tt></dd></dl>
+
+<strong>__sub__</strong> = k('-')
+<hr>
+Static methods defined here:<br>
+<dl><dt><a name="K-__new__"><strong>__new__</strong></a>(self, x)</dt></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<hr>
+Methods inherited from <a href="_k.html#K">_k.K</a>:<br>
+<dl><dt><a name="K-__iter__"><strong>__iter__</strong></a>(...)</dt><dd><tt>x.<a href="#K-__iter__">__iter__</a>()&nbsp;&lt;==&gt;&nbsp;iter(x)</tt></dd></dl>
+
+<dl><dt><a name="K-inspect"><strong>inspect</strong></a>(...)</dt><dd><tt><a href="#K-inspect">inspect</a>(k,&nbsp;c,&nbsp;[,&nbsp;i])&nbsp;-&gt;&nbsp;python&nbsp;object</tt></dd></dl>
+
+<hr>
+Data descriptors inherited from <a href="_k.html#K">_k.K</a>:<br>
+<dl><dt><strong>__array_struct__</strong></dt>
+<dd><tt>Array&nbsp;protocol:&nbsp;struct</tt></dd>
+</dl>
+<dl><dt><strong>__array_typestr__</strong></dt>
+<dd><tt>Array&nbsp;protocol:&nbsp;typestr</tt></dd>
+</dl>
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#eeaa77">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Functions</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl><dt><a name="-datetimetok"><strong>datetimetok</strong></a>(x)</dt><dd><tt>converts&nbsp;python&nbsp;datetime&nbsp;to&nbsp;k<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;<a href="#-datetimetok">datetimetok</a>(datetime(2006,5,3,2,43,25,999000))<br>
+<a href="#-k">k</a>('2006.05.03T02:43:25.999')</tt></dd></dl>
+ <dl><dt><a name="-datetok"><strong>datetok</strong></a>(x)</dt><dd><tt>converts&nbsp;python&nbsp;date&nbsp;to&nbsp;k<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;<a href="#-datetok">datetok</a>(date(2006,5,3))<br>
+<a href="#-k">k</a>('2006.05.03')</tt></dd></dl>
+ <dl><dt><a name="-inttok"><strong>inttok</strong></a>(x)</dt><dd><tt>converts&nbsp;python&nbsp;int&nbsp;to&nbsp;k<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;<a href="#-inttok">inttok</a>(2**40)<br>
+<a href="#-k">k</a>('1099511627776j')<br>
+&gt;&gt;&gt;&nbsp;<a href="#-inttok">inttok</a>(42)<br>
+<a href="#-k">k</a>('42')<br>
+&gt;&gt;&gt;&nbsp;<a href="#-inttok">inttok</a>(2**65)<br>
+Traceback&nbsp;(most&nbsp;recent&nbsp;call&nbsp;last):<br>
+...<br>
+OverflowError:&nbsp;long&nbsp;too&nbsp;big&nbsp;to&nbsp;convert</tt></dd></dl>
+ <dl><dt><a name="-k"><strong>k</strong></a>(m, *args)</dt></dl>
+ <dl><dt><a name="-kp"><strong>kp</strong></a> = _kp(...)</dt><dd><tt>returns&nbsp;a&nbsp;<a href="#K">K</a>&nbsp;string</tt></dd></dl>
+ <dl><dt><a name="-listtok"><strong>listtok</strong></a>(x)</dt><dd><tt>converts&nbsp;python&nbsp;list&nbsp;to&nbsp;k<br>
+&nbsp;<br>
+type&nbsp;is&nbsp;determined&nbsp;by&nbsp;the&nbsp;type&nbsp;of&nbsp;the&nbsp;first&nbsp;element&nbsp;of&nbsp;the&nbsp;list<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;<a href="#-listtok">listtok</a>(list("abc"))<br>
+<a href="#-k">k</a>('`a`b`c')</tt></dd></dl>
+ <dl><dt><a name="-timetok"><strong>timetok</strong></a>(x)</dt><dd><tt>converts&nbsp;python&nbsp;time&nbsp;to&nbsp;k<br>
+&nbsp;<br>
+&gt;&gt;&gt;&nbsp;<a href="#-timetok">timetok</a>(time(12,30,0,999000))<br>
+<a href="#-k">k</a>('12:30:00.999')</tt></dd></dl>
+</td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#55aa55">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><strong>__test__</strong> = {}<br>
+<strong>__version__</strong> = '$Revision: 1.16 $'<br>
+<strong>converters</strong> = {&lt;class 'q.K'&gt;: &lt;function &lt;lambda&gt; at 0x2a9cc0af50&gt;, &lt;type 'bool'&gt;: &lt;built-in method _kb of type object at 0x669430&gt;, &lt;type 'float'&gt;: &lt;built-in method _kf of type object at 0x669430&gt;, &lt;type 'int'&gt;: &lt;function inttok at 0x2a9cc0ac80&gt;, &lt;type 'list'&gt;: &lt;function listtok at 0x2a9cc0aed8&gt;, &lt;type 'long'&gt;: &lt;function inttok at 0x2a9cc0ac80&gt;, &lt;type 'str'&gt;: &lt;built-in method _ks of type object at 0x669430&gt;, &lt;type 'tuple'&gt;: &lt;function listtok at 0x2a9cc0aed8&gt;, &lt;type 'datetime.time'&gt;: &lt;function timetok at 0x2a9cc0ade8&gt;, &lt;type 'datetime.datetime'&gt;: &lt;function datetimetok at 0x2a9cc0acf8&gt;, ...}<br>
+<strong>fields</strong> = ' g  ghijefgs iif iif'<br>
+<strong>q</strong> = &lt;q._Q object at 0x2a9cc0c290&gt;</td></tr></table>
+</body></html>
