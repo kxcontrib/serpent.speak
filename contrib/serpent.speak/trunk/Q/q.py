@@ -60,18 +60,32 @@ Input/Output
 'xyz'
 >>> os.close(r); os.close(w)
 """
-__version__='$Revision: 1.16 $'
+__version__='$Revision: 1.26 $'
+__metaclass__ = type
 import _k
 from datetime import datetime, date, time
 kerr = _k.error
+class K_call_proxy:
+    def __get__(self, obj, objtype):
+        if obj.inspect('t') == 100:
+            return obj._call_lambda
+        return obj._call
+
+
 class K(_k.K):
     """a handle to q objects
-    
+
     >>> k('2005.01.01 2005.12.04')
     k('2005.01.01 2005.12.04')
 
     >>> list(q("`a`b`c`d"))
     ['a', 'b', 'c', 'd']
+
+    Callbacks into python
+    >>> def f(x, y):
+    ...     return x + y
+    >>> q('{[f]f(1;2)}', f)
+    k('3')
 
     Buffer protocol:
     >>> x = kp('xxxxxx')
@@ -80,7 +94,7 @@ class K(_k.K):
     True
     >>> os.close(w); x
     k('"abcdef"')
-    
+
     Array protocol:
     >>> ','.join([k(x).__array_typestr__
     ...  for x in ('0b;0x00;0h;0;0j;0e;0.0;" ";`;2000.01m;2000.01.01;'
@@ -148,7 +162,7 @@ class K(_k.K):
     array([1, 2, 3])
     >>> K(array([1, 2, 3]))
     k('1 2 3')
-    
+
     K scalars behave like Numeric scalars
     >>> asarray([1,2,3]) + asarray(k('0.5'))
     array([ 1.5,  2.5,  3.5])
@@ -167,10 +181,10 @@ class K(_k.K):
     Atoms:
     >>> K._kb(True), K._kg(5), K._kh(42), K._ki(-3), K._kj(2**40), K._ke(3.5)
     (k('1b'), k('0x05'), k('42h'), k('-3'), k('1099511627776j'), k('3.5e'))
-    
+
     >>> K._kf(1.0), K._kc('x'), K._ks('xyz')
     (k('1f'), k('"x"'), k('`xyz'))
-    
+
     >>> K._kd(0), K._kz(0.0), K._kt(0)
     (k('2000.01.01'), k('2000.01.01T00:00:00.000'), k('00:00:00.000'))
 
@@ -198,8 +212,8 @@ class K(_k.K):
             return K._from_array_interface(array_struct)
         c = converters[tx]
         return c(x)
-        
-    def __call__(self, *args):
+
+    def _call(self, *args):
         """call the k object
 
         Arguments are automatically converted to appropriate k objects
@@ -210,12 +224,47 @@ class K(_k.K):
         vectors:
         >>> map(k('{x}'), ('abc', kp('abc')))
         [k('`abc'), k('"abc"')]
-        
+
         """
-        if args:
-            return self._dot(self._knk(len(args), *map(K, args)))
-        else:
-            return q("@", self, k('::')) 
+        n = len(args)
+        kargs = map(K, args)
+        if not n:
+            return self
+        if n == 1:
+            return self._a1(*kargs)
+        if n == 2:
+            return self._a2(*kargs)
+        if n == 3:
+            return self._a3(*kargs)
+        return self._dot(self._knk(n, *kargs))
+
+    def _call_lambda(self, *args, **kwds):
+        """call the k lambda
+
+        >>> f = q('{[a;b]a-b}')
+        >>> assert f(1,2) == f(1)(2) == f(b=2)(1) == f(b=2,a=1)
+        >>> f(1,a=2)
+        Traceback (most recent call last):
+        ...
+        TypeError: {[a;b]a-b} got multiple values for argument 'a'
+        """
+        if not kwds:
+            return self._call(*args)
+        names = self._k(0, '{(value x)1}', self)
+        kargs = [nil]*len(names)
+        l = len(args)
+        kargs[:l] = args
+        for i,n in enumerate(names):
+            v = kwds.get(n)
+            if v is not None:
+                if i >= l:
+                    kargs[i] = v
+                else:
+                    raise TypeError("%s got multiple values for argument '%s'"
+                                    % (self, n))
+        return self._call(*(kargs or ['']))
+
+    __call__ = K_call_proxy()
 
     def __getitem__(self, x):
         """
@@ -228,7 +277,7 @@ class K(_k.K):
 
     def __getattr__(self, a):
         """table columns can be accessed via dot notation
-        
+
         >>> q("([]a:1 2 3; b:10 20 30)").a
         k('1 2 3')
         >>> q("([a:1 2 3]b:10 20 30)").b
@@ -240,8 +289,8 @@ class K(_k.K):
         if t == 99:
             return self._k(0, '{(0!x)`%s}'%a, self)
         raise AttributeError
-        
-        
+
+
     def __str__(self):
         """implements str(x)
 
@@ -250,7 +299,7 @@ class K(_k.K):
         ['abc', 'def']
         """
         if self.inspect('t') in (_k.KC, -_k.KS):
-            return _k.K.__str__(self)
+            return self.inspect('s')
         return self._k(0, "-3!", self).inspect('s')
 
     def __repr__(self):
@@ -300,7 +349,7 @@ class K(_k.K):
         >>> len(q("1 2 3"))
         3
         """
-        
+
         t = self.inspect('t')
         if 0 <= t < 98:
             return self.inspect('n')
@@ -325,15 +374,14 @@ class K(_k.K):
         """allow K objects use as descriptors"""
         if client is None:
             return self
-        else:
-            return self(client)
-        
+        return self._a1(client)
+
     __doc__ += """
     Q objects can be used in Python arithmetic expressions
-    
+
     >>> x,y,z = map(K, (1,2,3))
-    >>> print x + y, x * y, z/y, x|y, x&y
-    3 2 1.5 2 1
+    >>> print x + y, x * y, z/y, x|y, x&y, abs(-z)
+    3 2 1.5 2 1 3
 
     Mixing Q objects with python numbers is allowed
     >>> 1/q('1 2 4')
@@ -344,7 +392,7 @@ class K(_k.K):
 
 for spec, verb in [('add', '+'), ('sub', '-'), ('mul', '*'), ('pow', 'xexp'),
                    ('div', '%'), ('rdiv', '{y%x}'), ('and', '&'), ('or', '|'),
-                   ('mod', 'mod'), ('pos', '+:'), ('neg', '-:')]:
+                   ('mod', 'mod'), ('pos', '+:'), ('neg', '-:'), ('abs', 'abs')]:
     setattr(K, '__%s__' % spec, K._k(0, verb))
 del spec, verb
 for spec in 'add sub mul pow and or mod'.split():
@@ -357,17 +405,34 @@ def k(m, *args):
     return K._k(0, 'k)'+m, *map(K, args))
 
 class _Q(object):
-    _q = K._k(0, '.q')
-
     def __call__(self, m, *args):
         return K._k(0, m, *map(K, args))
-    
+
     def __getattr__(self, attr):
-        if K._k(0, '{x in key .q}', K._ks(attr)):
-            return _Q._q[attr]
+        k = K._k
+        try:
+            return k(0, attr)
+        except kerr:
+            pass
         raise AttributeError(attr)
 
+    def __setattr__(self, attr, value):
+        k = K._k
+        k(0, "{%s::x}" % attr, value) 
+
+    def __delattr__(self, attr):
+        k = K._k
+        k(0, "delete %s from `." % attr) 
+
+__doc__ += """
+Q variables can be accessed a attributes of the 'q' object:
+>>> q.test = q('([]a:1 2;b:`x`y)')
+>>> sum(q.test.a)
+3
+>>> del q.test
+"""
 q = _Q()
+nil = q('(value +[;0])1')
 
 def _test():
     import doctest
@@ -375,7 +440,7 @@ def _test():
 
 def inttok(x):
     """converts python int to k
-    
+
     >>> inttok(2**40)
     k('1099511627776j')
     >>> inttok(42)
@@ -393,7 +458,7 @@ def inttok(x):
 
 def datetimetok(x):
     """converts python datetime to k
-    
+
     >>> datetimetok(datetime(2006,5,3,2,43,25,999000))
     k('2006.05.03T02:43:25.999')
     """
@@ -412,7 +477,7 @@ def datetok(x):
 
 def timetok(x):
     """converts python time to k
-    
+
     >>> timetok(time(12,30,0,999000))
     k('12:30:00.999')
     """
@@ -422,17 +487,43 @@ def timetok(x):
                                + 60*x.hour)))
 
 def _ni(x): raise NotImplementedError
-_X = {str:K._S, int:_ni, float:_ni}
+_X = {str:K._S, int:K._I, float:K._F, date:_ni, time:_ni, datetime:_ni}
 def listtok(x):
     """converts python list to k
 
-    type is determined by the type of the first element of the list
-
+    >>> listtok([])
+    k('()')
+    
+    Type is determined by the type of the first element of the list
     >>> listtok(list("abc"))
     k('`a`b`c')
-    """
-    return _X[type(x[0])](x)
+    >>> listtok([1,2,3])
+    k('1 2 3')
+    >>> listtok([0.5,1.0,1.5])
+    k('0.5 1 1.5')
 
+    All elements must have the same type for conversion
+    >>> listtok([0.5,'a',5])
+    Traceback (most recent call last):
+      ...
+    TypeError: K._F: 2-nd item is not an int
+    
+    """
+    if x:
+        return _X[type(x[0])](x)
+    return K._ktn(0,0)
+
+def tupletok(x):
+    """converts python tuple to k
+
+    Tuples are converted to general lists, strings in tuples are
+    converted to char lists.
+
+    >>> tupletok((kp("insert"), 't', (1, "abc")))
+    k('("insert";`t;(1;`abc))')
+    """
+    return K._K(K(i) for i in x)
+    
 kp = K._kp
 
 converters = {
@@ -446,7 +537,8 @@ converters = {
     time: timetok,
     str: K._ks,
     list: listtok,
-    tuple: listtok,
+    tuple: tupletok,
+    type(lambda:None): K._func
     }
 
 try:
@@ -494,4 +586,3 @@ else:
 
 if __name__ == "__main__":
     _test()
-
