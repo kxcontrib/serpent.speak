@@ -60,13 +60,15 @@ Input/Output
 'xyz'
 >>> os.close(r); os.close(w)
 """
-__version__='$Revision: 1.26 $'
+__version__='$Revision: 1.27 $'
 __metaclass__ = type
 import _k
 from datetime import datetime, date, time
 kerr = _k.error
 class K_call_proxy:
     def __get__(self, obj, objtype):
+        if obj is None:
+            return self
         if obj.inspect('t') == 100:
             return obj._call_lambda
         return obj._call
