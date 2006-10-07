@@ -1,5 +1,5 @@
 /* -*- mode: c; c-basic-offset: 8 -*- */
-static char __version__[] = "$Revision: 1.35 $";
+static char __version__[] = "$Revision: 1.37 $";
 /*
   K object layout (32 bit):
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6
@@ -465,9 +465,61 @@ K_ATOM(b, G, b, "returns a K bool")
 K_ATOM(g, G, b, "returns a K byte")
 K_ATOM(h, H, h, "returns a K short")
 K_ATOM(i, I, i, "returns a K int")
+ZS th(I i){SW(i){CS(1,R "st")CS(2,R "nd")};R "th";}
+PyDoc_STRVAR(K_I_doc,
+	     "returns a K int list");
+static PyObject *
+K_I(PyTypeObject *type, PyObject *arg)
+{
+	PyObject *seq = PySequence_Fast(arg, "K._I: not a sequence");
+	if (seq == NULL)
+		return NULL;
+	int i, n = PySequence_Fast_GET_SIZE(seq);
+	K x = ktn(KI, n);
+	for (i = 0; i < n; ++i) {
+		PyObject *o = PySequence_Fast_GET_ITEM(seq, i);
+		if (!PyInt_Check(o)) {
+			r0(x);
+			PyErr_Format(PyExc_TypeError,
+				     "K._I: %d-%s item is not an int", i+1, th(i+1));
+			return NULL;
+		}
+		long item = PyInt_AS_LONG(o);
+		if (sizeof(I) != sizeof(long) && item != (I)item) {
+			r0(x);
+			PyErr_Format(PyExc_TypeError,
+				     "K._I: %d-%s item (%ld) is too big", i+1, th(i+1), item);
+			return NULL;
+		}
+		xI[i] = (I)item;
+	}
+	return KObject_FromK(type, x);
+}
 K_ATOM(j, J, L, "returns a K long (64 bits)")
 K_ATOM(e, E, f, "returns a K real (32 bits)")
 K_ATOM(f, F, d, "returns a K float (64 bits)")
+PyDoc_STRVAR(K_F_doc,
+	     "returns a K float list");
+static PyObject *
+K_F(PyTypeObject *type, PyObject *arg)
+{
+	PyObject *seq = PySequence_Fast(arg, "K._F: not a sequence");
+	if (seq == NULL)
+		return NULL;
+	int i, n = PySequence_Fast_GET_SIZE(seq);
+	K x = ktn(KF, n);
+	for (i = 0; i < n; ++i) {
+		PyObject *o = PySequence_Fast_GET_ITEM(seq, i);
+		if (!PyFloat_Check(o)) {
+			r0(x);
+			PyErr_Format(PyExc_TypeError,
+				     "K._F: %d-%s item is not an int", i+1, th(i+1));
+			return NULL;
+		}
+		xF[i] = PyFloat_AS_DOUBLE(o);
+	}
+	return KObject_FromK(type, x);
+}
 K_ATOM(c, G, c,	"returns a K char")
 
 PyDoc_STRVAR(K_ks_doc,
@@ -502,7 +554,7 @@ K_S(PyTypeObject *type, PyObject *arg)
 		if (!PyString_Check(o)) {
 			r0(x);
 			PyErr_Format(PyExc_TypeError,
-				     "K._S: %d-th item is not a string", i);
+				     "K._S: %d-%s item is not a string", i+1, th(i+1));
 			return NULL;
 		}
 		xS[i] = sn(PyString_AS_STRING(o), PyString_GET_SIZE(o));
@@ -513,6 +565,30 @@ K_ATOM(d, I, i, "returns a K date")
 K_ATOM(z, F, d, "returns a K datetime")
 K_ATOM(t, I, i, "returns a K time")
 K_ATOM(p, S, s, "returns a K string")
+
+PyDoc_STRVAR(K_K_doc,
+	     "returns a K general list");
+static PyObject *
+K_K(PyTypeObject *type, PyObject *arg)
+{
+	PyObject *seq = PySequence_Fast(arg, "K._K: not a sequence");
+	if (seq == NULL)
+		return NULL;
+	int i, n = PySequence_Fast_GET_SIZE(seq);
+	K x = ktn(0, n);
+	for (i = 0; i < n; ++i) {
+		PyObject *o = PySequence_Fast_GET_ITEM(seq, i);
+		if (!K_Check(o)) {
+			r0(x);
+			PyErr_Format(PyExc_TypeError,
+				     "K._K: %d-%s item is not a K object", i+1, th(i+1));
+			return NULL;
+		}
+		xK[i] = r1(((KObject*)o)->x);
+	}
+	return KObject_FromK(type, x);
+}
+
 
 PyDoc_STRVAR(K_ktn_doc,
 	     "returns a K list");
@@ -996,9 +1072,11 @@ K_methods[] = {
 	{"_kg",	(PyCFunction)K_kg, METH_VARARGS|METH_CLASS, K_kg_doc},
 	{"_kh",	(PyCFunction)K_kh, METH_VARARGS|METH_CLASS, K_kh_doc},
 	{"_ki",	(PyCFunction)K_ki, METH_VARARGS|METH_CLASS, K_ki_doc},
+	{"_I",	(PyCFunction)K_I, METH_O|METH_CLASS, K_I_doc},
 	{"_kj",	(PyCFunction)K_kj, METH_VARARGS|METH_CLASS, K_kj_doc},
 	{"_ke",	(PyCFunction)K_ke, METH_VARARGS|METH_CLASS, K_ke_doc},
 	{"_kf",	(PyCFunction)K_kf, METH_VARARGS|METH_CLASS, K_kf_doc},
+	{"_F",	(PyCFunction)K_F, METH_O|METH_CLASS, K_F_doc},
 	{"_kc",	(PyCFunction)K_kc, METH_VARARGS|METH_CLASS, K_kc_doc},
 	{"_ks",	(PyCFunction)K_ks, METH_VARARGS|METH_CLASS, K_ks_doc},
 	{"_S",	(PyCFunction)K_S, METH_O|METH_CLASS, K_S_doc},
@@ -1009,6 +1087,7 @@ K_methods[] = {
 	{"_ktn",(PyCFunction)K_ktn, METH_VARARGS|METH_CLASS, K_ktn_doc},
 	{"_xT",	(PyCFunction)K_xT, METH_VARARGS|METH_CLASS, K_xT_doc},
 	{"_xD",	(PyCFunction)K_xD, METH_VARARGS|METH_CLASS, K_xD_doc},
+	{"_K",	(PyCFunction)K_K, METH_O|METH_CLASS, K_K_doc},
 
 	{"_from_array_interface", (PyCFunction)K_from_array_interface,
                                    METH_O|METH_CLASS, K_from_array_interface_doc},
