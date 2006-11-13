@@ -60,7 +60,7 @@ Input/Output
 'xyz'
 >>> os.close(r); os.close(w)
 """
-__version__='$Revision: 1.27 $'
+__version__='$Revision: 1.29 $'
 __metaclass__ = type
 import _k
 from datetime import datetime, date, time
@@ -443,9 +443,49 @@ Q variables can be accessed a attributes of the 'q' object:
 q = _Q()
 nil = q('(value +[;0])1')
 
-def _test():
-    import doctest
-    doctest.testmod()
+def show(x, start=0, output=None, geometry=None):
+    """pretty-print data to the console
+
+    (similar to q.show, but uses python stdout by default)
+
+    >>> x = q('([k:`x`y`z]a:1 2 3;b:10 20 30)')
+    >>> show(x)
+    k| a b 
+    -| ----
+    x| 1 10
+    y| 2 20
+    z| 3 30
+
+    The first optional argument, 'start' specifies the first row to be
+    printed (negative means from the end):
+    >>> show(x, 2)
+    k| a b 
+    -| ----
+    z| 3 30
+    
+    >>> show(x, -2)
+    k| a b 
+    -| ----
+    y| 2 20
+    z| 3 30
+
+    The geometry is the height and width of the console
+    >>> show(x, geometry=[4,6])
+    k| a..
+    -| -..
+    x| 1..
+    ..
+
+    """
+    if output is None:
+        import sys;
+        output = sys.stdout
+    if geometry is None:
+        geometry = q.value(kp("\\c"))
+    if start < 0:
+        start += q.count(x)
+    S = q('{` sv .Q.S[x;y;z]}')
+    output.write(buffer(S(geometry,start,x)))
 
 def inttok(x):
     """converts python int to k
@@ -547,7 +587,8 @@ converters = {
     str: K._ks,
     list: listtok,
     tuple: tupletok,
-    type(lambda:None): K._func
+    type(lambda:0): K._func,
+    buffer: K._kp
     }
 
 try:
@@ -592,6 +633,10 @@ else:
     >>> K._from_array_interface(array(1, 'd').__array_struct__)
     k('1f')
     """
+
+def _test():
+    import doctest
+    doctest.testmod()
 
 if __name__ == "__main__":
     _test()

@@ -1,5 +1,5 @@
 /* -*- mode: c; c-basic-offset: 8 -*- */
-static char __version__[] = "$Revision: 1.37 $";
+static char __version__[] = "$Revision: 1.40 $";
 /*
   K object layout (32 bit):
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6
@@ -25,6 +25,10 @@ static char __version__[] = "$Revision: 1.37 $";
 */
 #include "Python.h"
 #include "k.h"
+/* these should be in k.h */
+ZK km(I i){K x = ka(-KM);xi=i;R x;}
+ZK ku(I i){K x = ka(-KU);xi=i;R x;}
+ZK kv(I i){K x = ka(-KV);xi=i;R x;}
 #include <stdlib.h>
 typedef struct {
         PyObject_HEAD
@@ -99,7 +103,7 @@ KObject_FromK(PyTypeObject *type, K x)
 		return NULL;
 	}
 	if (xt == -128)
-		return PyErr_Format(ErrorObject, xs),r0(x),NULL;
+		return PyErr_Format(ErrorObject, xs?xs:"not set"),r0(x),NULL;
 	KObject *self = (KObject*)type->tp_alloc(type, 0);
 	if (self)
 		self->x = x;
@@ -561,10 +565,28 @@ K_S(PyTypeObject *type, PyObject *arg)
 	}
 	return KObject_FromK(type, x);
 }
+K_ATOM(m, I, i, "returns a K month")
 K_ATOM(d, I, i, "returns a K date")
 K_ATOM(z, F, d, "returns a K datetime")
+K_ATOM(u, I, i, "returns a K minute")
+K_ATOM(v, I, i, "returns a K second")
 K_ATOM(t, I, i, "returns a K time")
-K_ATOM(p, S, s, "returns a K string")
+PyDoc_STRVAR(K_kp_doc,
+	     "returns a K string");
+static PyObject *
+K_kp(PyTypeObject *type, PyObject *args)
+{
+	KObject *ret = 0;
+	S s; I n;
+	if (!PyArg_ParseTuple(args, "s#", &s, &n, &K_Type, &ret)) {
+		return NULL;
+	}
+	K x = kpn(s,n);
+	if (!type) {
+		type = &K_Type;
+	}
+	return KObject_FromK(type, x);
+}
 
 PyDoc_STRVAR(K_K_doc,
 	     "returns a K general list");
@@ -1080,8 +1102,11 @@ K_methods[] = {
 	{"_kc",	(PyCFunction)K_kc, METH_VARARGS|METH_CLASS, K_kc_doc},
 	{"_ks",	(PyCFunction)K_ks, METH_VARARGS|METH_CLASS, K_ks_doc},
 	{"_S",	(PyCFunction)K_S, METH_O|METH_CLASS, K_S_doc},
+	{"_km",	(PyCFunction)K_km, METH_VARARGS|METH_CLASS, K_km_doc},
 	{"_kd",	(PyCFunction)K_kd, METH_VARARGS|METH_CLASS, K_kd_doc},
 	{"_kz",	(PyCFunction)K_kz, METH_VARARGS|METH_CLASS, K_kz_doc},
+	{"_ku",	(PyCFunction)K_ku, METH_VARARGS|METH_CLASS, K_ku_doc},
+	{"_kv",	(PyCFunction)K_kv, METH_VARARGS|METH_CLASS, K_kv_doc},
 	{"_kt",	(PyCFunction)K_kt, METH_VARARGS|METH_CLASS, K_kt_doc},
 	{"_kp",	(PyCFunction)K_kp, METH_VARARGS|METH_CLASS, K_kp_doc},
 	{"_ktn",(PyCFunction)K_ktn, METH_VARARGS|METH_CLASS, K_ktn_doc},
@@ -1114,7 +1139,7 @@ K_buffer_getreadbuf(KObject *self, Py_ssize_t index, const void **ptr)
 		return xn;
 	}
 	PyErr_Format(PyExc_NotImplementedError,
-		     "Buffer protocol not implemented for type %hd", xt);
+		     "Buffer protocol not implemented for type %d", (I)xt);
 	return -1;
 }
 
@@ -1133,7 +1158,7 @@ K_buffer_getwritebuf(KObject *self, Py_ssize_t index, const void **ptr)
 		return xn;
 	}
 	PyErr_Format(PyExc_NotImplementedError,
-		     "Buffer protocol not implemented for type %hd", xt);
+		     "Buffer protocol not implemented for type %d", (I)xt);
 	return -1;
 }
 
@@ -1643,14 +1668,240 @@ k3io_read_splayed(K x)
 	R x;
 }
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
+ZK k3c[20];
+ZS k3T[20];
+ZI k3type[] = {-1,1,1,-2,-3,-4};
+ZI k3size[] = { 4,0,0, 8, 1, 0};
+ZI
+write_header(FILE* f, I type, I length)
+{
+	struct header h = {{-3, 1}, type, length};
+	if (!fwrite(&h, sizeof(h), 1, f))
+		R orr("write_header"),-1;
+	return 0;
+}
+
+ZI write_vector(FILE* f, K x);
+
+ZI
+write_scalar(FILE* f, K x)
+{
+	I t = -k3type[-xt-KI];
+	struct header h = {{-3, 1}, 0, 0};
+	h.type = t;
+	if (!fwrite(&h, offsetof(struct header, length), 1, f))
+		R orr("write_scalar"),-1;
+	switch (t) {
+	case 1:
+		if (!fwrite(&xi, sizeof(I), 1, f))
+			R orr("write_scalar"),-1;
+		break;
+	case 2:
+		if (!fwrite(&h.length, sizeof(F), 1, f))
+			R orr("write_scalar"),-1;
+		if (!fwrite(&xf, sizeof(F), 1, f))
+			R orr("write_scalar"),-1;
+		break;
+	}
+	R 0;
+}
+
+ZI
+write_object(FILE* f, K x)
+{
+	R (xt < 0)
+		? write_scalar(f, x)
+		: write_vector(f, x);
+}
+
+ZI
+write_vector(FILE* f, K x)
+{
+	I t = xt;
+	if (t > KT && t < 100)
+		t = KI;
+	if (t < KI || t > KS)
+		R krr("type"),-1;
+	I n = xn;
+	if (write_header(f, k3type[t-KI], n))
+		R -1;
+	switch(k3type[t-KI]) {
+	case 0: 
+		DO(n,P(write_object(f, xK[i]),-1))break;
+	case -1:
+	case -2:       
+		if(n != fwrite(xG, k3size[t-KI], n, f))
+			R orr("write_vector"),-1;
+		break;
+	case -3:       
+		if(n != fwrite(xG, 1, n, f) || putc(0,f))
+			R orr("write_vector"),-1;
+		break;
+	case -4: {
+		I i; S s;
+		for (i = 0; i < n; ++i) {
+			s = xS[i];
+			if (1 != fwrite(s, 1+strlen(s), 1, f))
+				R orr("write_vector"),-1;
+		}
+		break;
+	}
+	default:
+		R krr("type"),-1;
+	}
+	return 0;
+}
+
+ZI
+write_symbol(FILE* f, S s)
+{
+	struct header h = {{-3, 1}, 4};
+	if (1 != fwrite(&h, offsetof(struct header, length), 1, f))
+		R orr("write_symbol"),-1;
+	if (1 != fwrite(s, strlen(s)+1, 1, f))
+		R orr("write_symbol"),-1;
+	R 0;
+}
+
+ZK
+k3convert(K x, S* type)
+{
+	K r;
+	if (xt < 0)
+		R krr("type");
+	if (xt > 19) {
+		K s = k(0, "key", x, (K)0);
+		if (s->t == -128)
+			R krr(s->s);
+		*type = s->s;
+		r = ktn(KI, xn);
+		memcpy(kI(r), xI, xn*sizeof(I));
+		R r;
+	}
+	*type = k3T[xt];
+	r = a1(k3c[xt], x);
+	R r;
+}
+
+
+ZI
+write_dict(FILE *f, K x)
+{
+	I n = xx->n, i;
+	if (write_header(f, 5, n))
+		R -1;
+	for (i = 0; i < n; ++i) {
+		S type;
+		if (write_header(f, 0, 3))
+			R -1;
+		if (write_symbol(f, kS(xx)[i]))
+			R -1;
+		k3io_next_object(f);
+		K c = k3convert(kK(xy)[i], &type);
+		if (write_vector(f, c))
+			R r0(c),-1;
+		r0(c);
+		k3io_next_object(f);
+		if (type) {
+			if (write_header(f, 5, 1))
+				R -1;
+			if (write_header(f, 0, 3))
+				R -1;
+			if (write_symbol(f, "T"))
+				R -1;
+			k3io_next_object(f);
+			if (write_symbol(f, type))
+				R -1;
+			k3io_next_object(f);
+		}
+		if (write_header(f, 6, 0))
+				R -1;
+	}
+	R 0;
+}
+
+ZK
+k3io_write_table(K x, K y)
+{
+	K r;
+	if (xt != -KS || *xs != ':')
+		R krr("k3io_write_table: type x");
+	if (y->t != XT)
+		R krr("k3io_write_table: type y");
+	FILE *f = fopen(xs+1, "w");
+	if (!f)
+		R orr("k3io_write_table");
+	r = write_dict(f, y->k)?0:r1(x);
+	if (fclose(f))
+		R orr("k3io_write_table");
+	R r;
+}
+
+ZK
+k3io_write_vector(K x, K y)
+{
+	if (xt != -KS || *xs != ':')
+		R krr("type");
+	I t = y->t;
+	if (t > KT && t < 100)
+		t = KI;
+	if (t < KI || t > KS)
+		R krr("type");
+	FILE* f = fopen(xs+1, "w");
+	if (!f)
+		R orr("k3io_write_vector");
+	if (-1 == write_vector(f, y))
+		x = NULL;
+	else
+		r1(x);
+	R fclose(f),x;
+}
+
+ZK
+k3io_write_splayed(K x, K y)
+{
+	if (xt != -KS)
+		R krr("type");
+	if (!mkdir(xs, 0777))
+		R orr("k3io_write_splayed");
+	if (y->t != XT)
+		R krr("type");
+	y = y->k; /* unflip */
+	/*
+	I i, n = kK(y)[0]->n;
+	for (i = 0; i = n; ++i) {
+		write_vector(xs, kK(kK(y)[0])[i]->s,
+			     kK(kK(y)[1])[i])
+	}
+	*/
+	R x;
+}
+
 void
 k3io_init(void)
 {
 	k(0, "{.k3.rt::x}", r1(kl(1, k3io_read_table)), (K)0);
 	k(0, "{.k3.rs::x}", r1(kl(1, k3io_read_splayed)), (K)0);
+	k(0, "{.k3.wt::x}", r1(kl(2, k3io_write_table)), (K)0);
+	k(0, "{.k3.ws::x}", r1(kl(2, k3io_write_splayed)), (K)0);
+	k(0, "{.k3.wv::x}", r1(kl(2, k3io_write_vector)), (K)0);
 	k(0, ".k3.convert:{"
 	  "C:`date`time!(2035.01.01+;::);"
 	  "$[(::)~y;x;$[null c:y`T;x;C[c]x]]}", (K)0);
+	DO(20,k3c[i]=k(0,"::",(K)0));
+	k3c[KB]=k3c[KG]=k3c[KH]=k(0,"`int$",(K)0);
+	k3c[KE]=k(0,"`float$",(K)0); 
+	k3c[KM]=k(0,"{-420+`int$x}",(K)0);
+	k3T[KM]="month";
+	k3c[KD]=k(0,"{-12784+`int$x}",(K)0);
+	k3T[KD]="date";
+	k3c[KZ]=k(0,"{-12784+`float$x}",(K)0); 
+	k3T[KZ]="timestamp";
+	k3c[KT]=k(0,"{(`float$x)%8.64e7}",(K)0); 
+	k3T[KT]="time";
 }
 
 /* k3io end */
