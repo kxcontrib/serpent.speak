@@ -353,12 +353,14 @@ class K(_k.K):
         3
         >>> len(q("([]a:10?5;b:0)"))
         10
+        >>> len(q("`a`b`c!1 2 3"))
+        3
         """
 
         t = self.inspect('t')
         if 0 <= t < 98:
             return self.inspect('n')
-        if t == 98:
+        if t in (98,99):
             return int(self._k(0, 'count', self))
         raise NotImplementedError
 
