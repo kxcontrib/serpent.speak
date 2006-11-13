@@ -348,13 +348,18 @@ class K(_k.K):
 
     def __len__(self):
         """the length of the object
+
         >>> len(q("1 2 3"))
         3
+        >>> len(q("([]a:10?5;b:0)"))
+        10
         """
 
         t = self.inspect('t')
         if 0 <= t < 98:
             return self.inspect('n')
+        if t == 98:
+            return int(self._k(0, 'count', self))
         raise NotImplementedError
 
     def __contains__(self, item):

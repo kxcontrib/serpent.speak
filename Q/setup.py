@@ -20,7 +20,7 @@ class qinstall_lib(install_lib):
         dist = self.distribution
         qdst = os.path.join(dist.qhome, dist.qarch)
         # TODO: eliminate hard-coded names
-        pyfiles = ['_k.so', 'q.py',]
+        pyfiles = ['_k.so', 'q.py', 'qc.py']
         if os.path.isdir(self.build_dir):
             outfiles = [self.copy_file(os.path.join(self.build_dir, f),
                                        self.install_dir)[0] for f in pyfiles]
@@ -45,5 +45,5 @@ modulepy = QExtension('py',
 setup(distclass=QDistribution,
       name='pyq',
       ext_modules=[ module_k, modulepy,],
-      py_modules=['q',],
+      py_modules=['q','qc'],
       )
