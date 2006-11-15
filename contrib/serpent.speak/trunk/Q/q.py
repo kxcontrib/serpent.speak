@@ -60,7 +60,7 @@ Input/Output
 'xyz'
 >>> os.close(r); os.close(w)
 """
-__version__='$Revision: 1.29 $'
+__version__='$Revision: 1.30 $'
 __metaclass__ = type
 import _k
 from datetime import datetime, date, time
@@ -334,9 +334,15 @@ class K(_k.K):
 
     def __eq__(self, other):
         """
-        >>> K(1) == K(2)
+        >>> K(1) == K(1)
+        True
+        >>> K(1) == None
         False
         """
+        try:
+            y = K(other)
+        except KeyError:
+            return False
         return bool(k('~')(self, other))
 
     def __ne__(self, other):
