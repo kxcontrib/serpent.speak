@@ -14,7 +14,7 @@ class Client(object):
     >>> del c
     """
     def __init__(self, host='', port=5001):
-        self._h = q("hopen`%s:%s" %(host, port))
+        self._h = q("hopen`:%s:%s" %(host, port))
     def __del__(self):
         q.hclose(self._h)
     def __call__(self, query, *args):
