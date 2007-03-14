@@ -414,7 +414,7 @@ for spec in 'add sub mul pow and or mod'.split():
     setattr(K, '__r%s__' % spec, getattr(K, '__%s__' % spec))
 del spec
 
-fields = " g  ghijefgs iif iif"
+fields = " g  ghijefgs iif iii"
 
 def k(m, *args):
     return K._k(0, 'k)'+m, *map(K, args))
