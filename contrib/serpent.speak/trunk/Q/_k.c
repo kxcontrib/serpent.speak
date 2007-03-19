@@ -103,7 +103,7 @@ KObject_FromK(PyTypeObject *type, K x)
 		return NULL;
 	}
 	if (xt == -128)
-		return PyErr_Format(ErrorObject, xs?xs:"not set"),r0(x),NULL;
+		return PyErr_Format(ErrorObject, xs?xs:(S)"not set"),r0(x),NULL;
 	KObject *self = (KObject*)type->tp_alloc(type, 0);
 	if (self)
 		self->x = x;
@@ -1009,7 +1009,10 @@ K_inspect(PyObject *self, PyObject *args)
 			  ? PyString_FromString((char*)k->s)
 			  : k->t == KC
 			  ? PyString_FromStringAndSize((char*)kG(k), k->n)
+			  : k->t == -KC
+			  ? PyString_FromStringAndSize((char*)&k->g, 1)
 			  : PyString_FromFormat("<%p>", k->s));
+	case 'c': return PyString_FromStringAndSize((char*)&k->g, 1);
 	case 'k': return KObject_FromK(self->ob_type, r1(k->k));
 		/* lists */
 	case 'G': return PyInt_FromLong(kG(k)[i]);

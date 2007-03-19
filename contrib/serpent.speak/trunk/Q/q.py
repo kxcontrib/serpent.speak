@@ -296,11 +296,12 @@ class K(_k.K):
     def __str__(self):
         """implements str(x)
 
-        Symbols and character arrays are unchanged
-        >>> map(str, [q('`abc'), q('"def"')])
-        ['abc', 'def']
+        Symbols, character arrays and atoms are unchanged
+        >>> map(str, map(q, '`abc "def" "x"'.split()))
+        ['abc', 'def', 'x']
         """
-        if self.inspect('t') in (_k.KC, -_k.KS):
+        t = self.inspect('t')
+        if t in (_k.KC, -_k.KS, -_k.KC):
             return self.inspect('s')
         return self._k(0, "-3!", self).inspect('s')
 
