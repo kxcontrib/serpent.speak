@@ -1013,7 +1013,9 @@ K_inspect(PyObject *self, PyObject *args)
 			  ? PyString_FromStringAndSize((char*)&k->g, 1)
 			  : PyString_FromFormat("<%p>", k->s));
 	case 'c': return PyString_FromStringAndSize((char*)&k->g, 1);
-	case 'k': return KObject_FromK(self->ob_type, r1(k->k));
+	case 'k': return (k->t == XT
+			  ? KObject_FromK(self->ob_type, r1(k->k))
+			  : PyString_FromFormat("<%p>", k->k));
 		/* lists */
 	case 'G': return PyInt_FromLong(kG(k)[i]);
 	case 'H': return PyInt_FromLong(kH(k)[i]);
@@ -1295,11 +1297,8 @@ static PyMethodDef _k_methods[] = {
 
 typedef struct {
 	PyObject_HEAD
-	char*			ptr;
-	char*			end;
-	KObject*                obj;
-	size_t                  itemsize;
-	int                     itemtype;
+	PyTypeObject* ktype;
+	K x; I i,n;
 } kiterobject;
 
 static PyTypeObject KObjectIter_Type;
@@ -1309,7 +1308,7 @@ static PyTypeObject KObjectIter_Type;
 static PyObject *
 k_iter(KObject *obj)
 {
-	kiterobject *it;
+	kiterobject *it; K x;
 
 	if (!K_Check(obj)) {
 		PyErr_BadInternalCall();
@@ -1319,17 +1318,17 @@ k_iter(KObject *obj)
 	it = PyObject_GC_New(kiterobject, &KObjectIter_Type);
 	if (it == NULL)
 		return NULL;
-
-	Py_INCREF(obj);
-	it->obj = obj;
-	it->ptr = kG(obj->x);
-	it->itemsize = k_itemsize(obj->x);
-	if (!it->itemsize) {
-		PyErr_Format(PyExc_NotImplementedError, "not iterable: t=%d", obj->xt);
+	Py_INCREF(it->ktype = obj->ob_type);
+	x = obj->x;
+	if (xt == XD)
+		x = xx;
+	it->x = r1(x);
+	it->i = 0;
+	if (!k_itemsize(x) && xt != XT) {
+		PyErr_Format(PyExc_NotImplementedError, "not iterable: t=%d", xt);
 		return NULL;
 	}
-	it->end = it->ptr + it->itemsize * obj->xn;
-	it->itemtype = obj->xt;
+	it->n = xt == XT ? kK(kK(xk)[1])[0]->n : xn;
 	PyObject_GC_Track(it);
 	return (PyObject *)it;
 }
@@ -1338,44 +1337,50 @@ static PyObject *
 kiter_next(kiterobject *it)
 {
 	PyObject *ret = NULL;
-	if (it->ptr < it->end)
-		switch (it->itemtype) {
+	K row, x = it->x;
+	I i = it->i, n = it->n;
+	if (i < n)
+		switch (xt) {
 		case KS: /* most common case: use list(ks) */
-			ret = PyString_FromString(*(char**)it->ptr);
+			ret = PyString_FromString(xS[i]);
 			break;
 		case 0:
-			ret = KObject_FromK(it->obj->ob_type, r1(*(K*)it->ptr));
+			ret = KObject_FromK(it->ktype, r1(xK[i]));
 			break;
 		/* remaining cases are less common because array(x) *
 		 * is a better option that list(x)                  */
 		case KB:
-			ret = PyBool_FromLong(*(char*)it->ptr);
-			break;
 		case KG:
+			ret = PyBool_FromLong(xG[i]);
+			break;
 		case KC:
-			ret = PyString_FromStringAndSize(it->ptr, 1);
+			ret = PyString_FromStringAndSize(&xC[i], 1);
 			break;
 		case KH:
-			ret = PyInt_FromLong(*(short*)it->ptr);
+			ret = PyInt_FromLong(xH[i]);
 			break;
 		case KI:
 		case KM:
 		case KD:
 		case KV:
 		case KT:
-			ret = PyInt_FromLong(*(int*)it->ptr);
+			ret = PyInt_FromLong(xI[i]);
 			break;
 		case KJ:
-			ret = PyLong_FromLongLong(*(long long*)it->ptr);
+			ret = PyLong_FromLongLong(xJ[i]);
 			break;
 		case KE:
-			ret = PyFloat_FromDouble(*(float*)it->ptr);
+			ret = PyFloat_FromDouble(xE[i]);
 			break;
 		case KF:
-			ret = PyFloat_FromDouble(*(double*)it->ptr);
+			ret = PyFloat_FromDouble(xF[i]);
+			break;
+		case XT:
+			row = k(0, "@", r1(x), ki(i), (K)0);
+			ret = KObject_FromK(it->ktype, r1(row));
 			break;
 		}
-	it->ptr += it->itemsize;
+	it->i++;
 	return ret;
 }
 
@@ -1383,15 +1388,16 @@ static void
 kiter_dealloc(kiterobject *it)
 {
 	PyObject_GC_UnTrack(it);
-	Py_XDECREF(it->obj);
+	Py_XDECREF(it->ktype);
+	r0(it->x);
 	PyObject_GC_Del(it);
 }
 
 static int
 kiter_traverse(kiterobject *it, visitproc visit, void *arg)
 {
-	if (it->obj != NULL)
-		return visit((PyObject *)(it->obj), arg);
+	if (it->ktype != NULL)
+		return visit((PyObject *)(it->ktype), arg);
 	return 0;
 }
 
@@ -1797,7 +1803,7 @@ write_dict(FILE *f, K x)
 	if (write_header(f, 5, n))
 		R -1;
 	for (i = 0; i < n; ++i) {
-		S type;
+		S type = NULL;
 		if (write_header(f, 0, 3))
 			R -1;
 		if (write_symbol(f, kS(xx)[i]))
