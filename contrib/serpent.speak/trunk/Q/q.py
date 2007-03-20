@@ -80,9 +80,23 @@ class K(_k.K):
     >>> k('2005.01.01 2005.12.04')
     k('2005.01.01 2005.12.04')
 
+    Iteration over simple lists produces python objects
     >>> list(q("`a`b`c`d"))
     ['a', 'b', 'c', 'd']
 
+    Iteration over q tables produces q dictionaries
+    >>> list(q("([]a:`x`y`z;b:1 2 3)"))
+    [k('`a`b!(`x;1)'), k('`a`b!(`y;2)'), k('`a`b!(`z;3)')]
+
+    Iteration over a q dictionary iterates over its key
+    >>> list(q('`a`b!1 2'))
+    ['a', 'b']
+    
+    as a consequence, iteration over a keyed table is the same as
+    iteration over its key table
+    >>> list(q("([a:`x`y`z]b:1 2 3)"))
+    [k('(,`a)!,`x'), k('(,`a)!,`y'), k('(,`a)!,`z')]
+    
     Callbacks into python
     >>> def f(x, y):
     ...     return x + y
