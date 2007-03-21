@@ -122,5 +122,26 @@ class IterTestCase(unittest.TestCase):
         for x,y in zip(t, d):
             self.failUnless(eq(x,y))
 
+class CallsTestCase(unittest.TestCase):
+    def test_dot(self):
+        x = k(0, '+')._dot(I([1, 2]))
+        y = ki(3)
+        self.failUnless(eq(x, y))
+
+    def test_a1(self):
+        x = k(0, 'neg')._a1(ki(1))
+        y = ki(-1)
+        self.failUnless(eq(x, y))
+
+    def test_a2(self):
+        x = k(0, '+')._a2(ki(1), ki(2))
+        y = ki(3)
+        self.failUnless(eq(x, y))
+
+    def test_a3(self):
+        x = k(0, 'list')._a3(ki(1), ki(2), ki(3))
+        y = I([1,2,3])
+        self.failUnless(eq(x, y))
+
 if __name__ == '__main__':
     unittest.main()
