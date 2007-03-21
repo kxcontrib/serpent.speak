@@ -1337,7 +1337,7 @@ static PyObject *
 kiter_next(kiterobject *it)
 {
 	PyObject *ret = NULL;
-	K row, x = it->x;
+	K x = it->x, y;
 	I i = it->i, n = it->n;
 	if (i < n)
 		switch (xt) {
@@ -1378,8 +1378,8 @@ kiter_next(kiterobject *it)
 			ret = PyFloat_FromDouble(xF[i]);
 			break;
 		case XT:
-			row = k(0, "@", r1(x), ki(i), (K)0);
-			ret = KObject_FromK(it->ktype, r1(row));
+			ret = KObject_FromK(it->ktype,a1(x,y=ki(i)));
+			r0(y);
 			break;
 		}
 	it->i++;
