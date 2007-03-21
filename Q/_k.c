@@ -1350,11 +1350,13 @@ kiter_next(kiterobject *it)
 		/* remaining cases are less common because array(x) *
 		 * is a better option that list(x)                  */
 		case KB:
-		case KG:
 			ret = PyBool_FromLong(xG[i]);
 			break;
 		case KC:
 			ret = PyString_FromStringAndSize(&xC[i], 1);
+			break;
+		case KG:
+			ret = PyInt_FromLong(xG[i]);
 			break;
 		case KH:
 			ret = PyInt_FromLong(xH[i]);
