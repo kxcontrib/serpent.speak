@@ -406,6 +406,28 @@ class K(_k.K):
             return self
         return self._a1(client)
 
+    def keys(self):
+        """returns q('key', self)
+
+        Among other uses, enables interoperability between q and
+        python dicts.
+        >>> dict(q('`a`b!1 2'))
+        {'a': k('1'), 'b': k('2')}
+        >>> d = {}; d.update(q('`a`b!1 2'))
+        >>> d
+        {'a': k('1'), 'b': k('2')}
+
+        An elegant idiom to unpack q tables:
+        >>> u = locals().update
+        >>> for r in q('([]a:`x`y`z;b:1 2 3;c:"XYZ")'):
+        ...     u(r); print a, b, c
+        x 1 X
+        y 2 Y
+        z 3 Z
+                    
+        """
+        return self._k(0, 'key', self)
+    
     __doc__ += """
     Q objects can be used in Python arithmetic expressions
 

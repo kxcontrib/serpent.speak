@@ -24,7 +24,9 @@ static char __version__[] = "$Revision: 1.40 $";
                 +-------+
 */
 #include "Python.h"
+#include "datetime.h"
 #include "k.h"
+#include "math.h"
 /* these should be in k.h */
 ZK km(I i){K x = ka(-KM);xi=i;R x;}
 ZK ku(I i){K x = ka(-KU);xi=i;R x;}
@@ -1332,6 +1334,70 @@ k_iter(KObject *obj)
 	PyObject_GC_Track(it);
 	return (PyObject *)it;
 }
+static K d2l, m2l, z2l, t2l, v2l, u2l;
+static PyObject *
+d2py(I d)
+{
+	switch (d) {
+	case -wi: R PyDate_FromDate(1,1,1);
+	case wi: R PyDate_FromDate(9999,12,31);
+	case ni: Py_RETURN_NONE;
+	}
+	K y=kd(d),x=a1(d2l,y);r0(y);
+	PyObject *o = PyDate_FromDate(xI[0],xI[1],xI[2]);
+	r0(x); R o;
+}
+static PyObject *
+m2py(I d)
+{
+	switch (d) {
+	case -wi: R PyDate_FromDate(1,1,1);
+	case wi: R PyDate_FromDate(9999,12,1);
+	case ni: Py_RETURN_NONE;
+	}
+	K y=km(d),x=a1(m2l,y);r0(y);
+	PyObject *o = PyDate_FromDate(xI[0],xI[1],1);
+	r0(x); R o;
+}
+static PyObject *
+z2py(F z)
+{
+	switch (isinf(z)) {
+	case -1: R PyDateTime_FromDateAndTime(1,1,1,0,0,0,0);
+	case 1: R PyDateTime_FromDateAndTime(9999,12,31,23,59,59,999999);
+	case 0: if (isnan(z)) Py_RETURN_NONE;
+	} 
+	K y=kz(z),x=a1(z2l,y);r0(y);
+	PyObject *o =  PyDateTime_FromDateAndTime(xI[0],xI[1],xI[2],
+						  xI[3],xI[4],xI[5],
+						  (I)round((z-floor(z))*24*60*60*1e6));
+	r0(x); R o;
+}
+static PyObject *
+t2py(I t)
+{
+	if(t == ni) Py_RETURN_NONE;
+	K y=kt(t),x=a1(t2l,y);r0(y);
+	PyObject *o = PyTime_FromTime(xI[0],xI[1],xI[2],
+				       t%1000*1000);
+	r0(x); R o;
+}
+static PyObject *
+v2py(I t)
+{
+	if(t == ni) Py_RETURN_NONE;
+	K y=kv(t),x=a1(v2l,y);r0(y);
+	PyObject *o = PyTime_FromTime(xI[0],xI[1],xI[2],0);
+	r0(x); R o;
+}
+static PyObject *
+u2py(I t)
+{
+	if(t == ni) Py_RETURN_NONE;
+	K y=ku(t),x=a1(u2l,y);r0(y);
+	PyObject *o = PyTime_FromTime(xI[0],xI[1],0,0);
+	r0(x); R o;
+}
 
 static PyObject *
 kiter_next(kiterobject *it)
@@ -1362,11 +1428,25 @@ kiter_next(kiterobject *it)
 			ret = PyInt_FromLong(xH[i]);
 			break;
 		case KI:
-		case KM:
-		case KD:
-		case KV:
-		case KT:
 			ret = PyInt_FromLong(xI[i]);
+			break;
+		case KM:
+			ret = m2py(xI[i]);
+			break;
+		case KD:
+			ret = d2py(xI[i]);
+			break;
+		case KV:
+			ret = v2py(xI[i]);
+			break;
+		case KU:
+			ret = u2py(xI[i]);
+			break;
+		case KT:
+			ret = t2py(xI[i]);
+			break;
+		case KZ:
+			ret = z2py(xF[i]);
 			break;
 		case KJ:
 			ret = PyLong_FromLongLong(xJ[i]);
@@ -1913,6 +1993,14 @@ k3io_init(void)
 	k3T[KZ]="timestamp";
 	k3c[KT]=k(0,"{(`float$x)%8.64e7}",(K)0); 
 	k3T[KT]="time";
+	PyDateTime_IMPORT;
+	/* date/time to list translations */
+	d2l=k(0,"`year`mm`dd$\\:",(K)0);
+	m2l=k(0,"`year`mm$\\:",(K)0);
+	z2l=k(0,"`year`mm`dd`hh`uu`ss$\\:",(K)0); 
+	t2l=k(0,"`hh`mm`ss$\\:",(K)0);
+	v2l=k(0,"`hh`mm`ss$\\:",(K)0);
+	u2l=k(0,"`hh`mm$\\:",(K)0);
 }
 
 /* k3io end */
