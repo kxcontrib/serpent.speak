@@ -548,35 +548,31 @@ def inttok(x):
         return K._kj(x)
 
 
-def datetimetok(x):
-    """converts python datetime to k
+datetimetok = K._kzz
+__doc__ += """
+datetimetok converts python datetime to k (DEPRECATED)
 
-    >>> datetimetok(datetime(2006,5,3,2,43,25,999000))
-    k('2006.05.03T02:43:25.999')
-    """
-    midnight = x.combine(x, time(0))
-    delta = x - midnight
-    return K._kz(x.toordinal() - 730120
-                 + (delta.seconds + 0.000001*delta.microseconds)/86400.)
+>>> datetimetok(datetime(2006,5,3,2,43,25,999000))
+k('2006.05.03T02:43:25.999')
+"""
 
-def datetok(x):
-    """converts python date to k
+datetok = K._kdd
+__doc__ += """
+datetok converts python date to k (DEPRECATED)
 
-    >>> datetok(date(2006,5,3))
-    k('2006.05.03')
-    """
-    return K._kd(x.toordinal() - 730120)
+>>> datetok(date(2006,5,3))
+k('2006.05.03')
 
-def timetok(x):
-    """converts python time to k
+"""
 
-    >>> timetok(time(12,30,0,999000))
-    k('12:30:00.999')
-    """
-    return K._kt(x.microsecond//1000
-                 + 1000*(x.second
-                         + 60*(x.minute
-                               + 60*x.hour)))
+timetok = K._ktt
+__doc__ += """
+timetok converts python time to k (DEPRECATED)
+
+>>> timetok(time(12,30,0,999000))
+k('12:30:00.999')
+
+"""
 
 def _ni(x): raise NotImplementedError
 _X = {str:K._S, int:K._I, float:K._F, date:_ni, time:_ni, datetime:_ni}
@@ -624,9 +620,9 @@ converters = {
     int: inttok,
     long: inttok,
     float: K._kf,
-    date: datetok,
-    datetime: datetimetok,
-    time: timetok,
+    date: K._kdd,
+    datetime: K._kzz,
+    time: K._ktt,
     str: K._ks,
     list: listtok,
     tuple: tupletok,
