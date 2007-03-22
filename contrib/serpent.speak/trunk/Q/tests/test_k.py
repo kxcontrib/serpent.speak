@@ -1,6 +1,6 @@
 import unittest
 import _k
-
+from datetime import datetime, date, time
 # extract _k.K class methods
 
 for m in ('func k knk ktd err'
@@ -77,6 +77,10 @@ class TableDictTestCase(unittest.TestCase):
         c = I([1,2,3])
         self.failUnless(eq(xT(xD(S('abc'), K([a,b,c]))),
                            k(0, '([]a:`X`Y`Z;b:"xyz";c:1 2 3)')))
+    def test_ktd(self):
+        x = k(0, '([a:1 2 3]b:10 20 30)')
+        y = k(0, '([]a:1 2 3;b:10 20 30)')
+        self.failUnless(eq(ktd(x),y))
 
 class IterTestCase(unittest.TestCase):
     def test_bool(self):
@@ -97,6 +101,28 @@ class IterTestCase(unittest.TestCase):
 
     def test_long(self):
         self.failUnlessEqual(list(k(0, '1 2 3j')), [1, 2, 3])
+
+    def test_date(self):
+        self.failUnlessEqual(list(k(0, '"d"$0 1 2')),[date(2000,1,d) for d in [1, 2, 3]])
+        self.failUnlessEqual(list(k(0, '-0W 0N 0Wd')),[date(1,1,1), None, date(9999,12,31),])
+
+    def test_month(self):
+        self.failUnlessEqual(list(k(0, '"m"$0 1 2')),[date(2000,m,1) for m in [1, 2, 3]])
+        self.failUnlessEqual(list(k(0, '-0W 0N 0Wm')),[date(1,1,1), None, date(9999,12,1),])
+                             
+    def test_datetime(self):
+        self.failUnlessEqual(list(k(0, '"z"$0.5 1.5 2.5')),[datetime(2000,1,d,12) for d in [1, 2, 3]])
+        self.failUnlessEqual(list(k(0, '-0w 0n 0wz')),[datetime(1,1,1), None,
+                                                       datetime(9999,12,31,23,59,59,999999),])
+        
+    def test_time(self):
+        self.failUnlessEqual(list(k(0, '"t"$0 1 2 0N')),[time(0,0,0,m*1000) for m in range(3)]+[None])
+
+    def test_minute(self):
+        self.failUnlessEqual(list(k(0, '"u"$0 1 2 0N')),[time(0,m,0) for m in range(3)]+[None])
+
+    def test_second(self):
+        self.failUnlessEqual(list(k(0, '"v"$0 1 2')),[time(0,0,s) for s in range(3)])
 
     def test_symbol(self):
         l = ['a', 'b', 'c']
