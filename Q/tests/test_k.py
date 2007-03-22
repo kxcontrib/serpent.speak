@@ -5,6 +5,7 @@ from datetime import datetime, date, time
 
 for m in ('func k knk ktd err'
           ' ka kb kg kh ki kj ke kf kc ks km kd kz ku kv kt kp'
+          ' kdd ktt kzz'
           ' I F S K xT xD').split():
     globals()[m] = getattr(_k.K, '_'+m)
 del m
@@ -42,6 +43,12 @@ class AtomTestCase(unittest.TestCase):
         self.failUnless(eq(km(1), k(0, '2000.02m')))
     def test_kd(self):
         self.failUnless(eq(kd(1), k(0, '2000.01.02')))
+    def test_kdd(self):
+        self.failUnless(eq(kdd(date(2000,1,2)), k(0, '2000.01.02')))
+    def test_ktt(self):
+        self.failUnless(eq(ktt(time(10,11,12,1000)), k(0, '10:11:12.001')))
+    def test_kzz(self):
+        self.failUnless(eq(kzz(datetime(2000,1,2,10,11,12,1000)), k(0, '2000.01.02T10:11:12.001')))
     def test_kz(self):
         self.failUnless(eq(kz(1.5), k(0, '2000.01.02T12:00:00.000')))
     def test_ku(self):
@@ -96,7 +103,7 @@ class IterTestCase(unittest.TestCase):
         self.failUnlessEqual(list(k(0, '1 2 3h')), [1, 2, 3])
 
     def test_int(self):
-        l = [1,2,3]
+        l = [1,2,3,None]
         self.failUnlessEqual(list(I(l)), l)
 
     def test_long(self):
