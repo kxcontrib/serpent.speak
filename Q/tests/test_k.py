@@ -161,6 +161,11 @@ class CallsTestCase(unittest.TestCase):
         y = ki(3)
         self.failUnless(eq(x, y))
 
+    def test_a0(self):
+        x = k(0, '{1}')._a0()
+        y = ki(1)
+        self.failUnless(eq(x, y))
+
     def test_a1(self):
         x = k(0, 'neg')._a1(ki(1))
         y = ki(-1)
@@ -175,6 +180,37 @@ class CallsTestCase(unittest.TestCase):
         x = k(0, 'list')._a3(ki(1), ki(2), ki(3))
         y = I([1,2,3])
         self.failUnless(eq(x, y))
+
+class StrTestCase(unittest.TestCase):
+    def test_pass(self):
+        x = 'abc'
+        self.failUnlessEqual(str(ks(x)), x)
+        self.failUnlessEqual(str(kp(x)), x)
+        x = 'a'
+        self.failUnlessEqual(str(kc(x)), x)
+
+    def test_misc(self):
+        self.failUnlessEqual(str(kb(1)), '1b')
+        self.failUnlessEqual(str(kh(1)), '1h')
+        self.failUnlessEqual(str(ki(1)), '1')
+        self.failUnlessEqual(str(kj(1)), '1j')
+        self.failUnlessEqual(str(kf(1)), '1f')
+        
+class ReprTestCase(unittest.TestCase):
+    def test_pass(self):
+        x = 'abc'
+        self.failUnlessEqual(repr(ks(x)), "k('`abc')")
+        self.failUnlessEqual(repr(kp(x)), "k('\"abc\"')")
+        x = 'a'
+        self.failUnlessEqual(repr(kc(x)), "k('\"a\"')")
+
+    def test_misc(self):
+        self.failUnlessEqual(repr(kb(1)), "k('1b')")
+        self.failUnlessEqual(repr(kh(1)), "k('1h')")
+        self.failUnlessEqual(repr(ki(1)), "k('1')")
+        self.failUnlessEqual(repr(kj(1)), "k('1j')")
+        self.failUnlessEqual(repr(kf(1)), "k('1f')")
+        
 
 if __name__ == '__main__':
     unittest.main()

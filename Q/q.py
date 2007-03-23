@@ -242,17 +242,7 @@ class K(_k.K):
         [k('`abc'), k('"abc"')]
 
         """
-        n = len(args)
-        kargs = map(K, args)
-        if not n:
-            return self
-        if n == 1:
-            return self._a1(*kargs)
-        if n == 2:
-            return self._a2(*kargs)
-        if n == 3:
-            return self._a3(*kargs)
-        return self._dot(self._knk(n, *kargs))
+        return super(K, self).__call__(*map(K, args))
 
     def _call_lambda(self, *args, **kwds):
         """call the k lambda
@@ -305,22 +295,6 @@ class K(_k.K):
         if t == 99:
             return self._k(0, '{(0!x)`%s}'%a, self)
         raise AttributeError
-
-
-    def __str__(self):
-        """implements str(x)
-
-        Symbols, character arrays and atoms are unchanged
-        >>> map(str, map(q, '`abc "def" "x"'.split()))
-        ['abc', 'def', 'x']
-        """
-        t = self.inspect('t')
-        if t in (_k.KC, -_k.KS, -_k.KC):
-            return self.inspect('s')
-        return self._k(0, "-3!", self).inspect('s')
-
-    def __repr__(self):
-        return 'k(%r)' % self._k(0, "-3!", self).inspect('s')
 
     def __int__(self):
         """converts K scalars to python int

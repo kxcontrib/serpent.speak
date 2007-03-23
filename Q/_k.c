@@ -90,6 +90,8 @@ PyDoc_STRVAR(module_doc,
 "t  4    00:00:00.000 time	                 \n"
 "*  4    `s$`         enum	                 \n"
 );
+extern void clr(void);
+extern char* es;
 /* K objects */
 static PyObject *ErrorObject;
 static PyObject *
@@ -98,8 +100,6 @@ KObject_FromK(PyTypeObject *type, K x)
 	if (!type) 
 		type = &K_Type;
 	if (!x) {
-		extern void clr(void);
-		extern char* es;
 		PyErr_SetString(ErrorObject, es);
 		clr();
 		return NULL;
@@ -148,6 +148,17 @@ K_dot(KObject *self, PyObject *args)
 }
 
 extern K a1(K,K);
+static K k_none;
+static PyObject*
+K_a0(KObject *self)
+{
+	K x = self->x;
+	if (xt < 100) {
+		Py_INCREF(self);
+		return self;
+	}
+	R KObject_FromK(self->ob_type, a1(x, k_none));
+}
 static PyObject*
 K_a1(KObject *self, PyObject *arg)
 {
@@ -177,19 +188,7 @@ K_a3(KObject *self, PyObject *args)
 	return NULL;
 }
 
-static PyObject*
-K_call(KObject *self, PyObject *args, PyObject *kw)
-{
-	I n = PyTuple_GET_SIZE(args);
-	K x;
-	if (kw) {
-		
-	}
-	x = ktn(0,n);
-
-	return KObject_FromK(self->ob_type, k(0, ".", self->x, x));
-}
-
+static K k_repr;
 static PyObject*
 K_str(KObject *self)
 {
@@ -199,9 +198,37 @@ K_str(KObject *self)
 		return PyString_FromStringAndSize(xC, xn);
 	case -KS:
 		return PyString_FromString(xs);
+	case -KC:
+		return PyString_FromStringAndSize(&xg, 1);
 	}
-	return PyString_FromFormat("<%s object of type %d at 0x%p>",
-				   self->ob_type->tp_name, xt, x);
+	x = a1(k_repr, x);
+	if (!x) {
+		PyErr_SetString(ErrorObject, es);
+		clr();
+		return NULL;
+	}
+	return PyString_FromStringAndSize(xC, xn);
+}
+static PyObject*
+K_repr(KObject *self)
+{
+	K x;
+	PyObject *f, *s, *r;
+	x = a1(k_repr, self->x);
+	if (!x) {
+		clr();
+		return PyString_FromFormat("<k object at %p(%p)>", self, self->x);
+	}
+	f = PyString_FromString("k(%r)");
+	if (f == NULL)
+		R NULL;
+	s = PyString_FromStringAndSize(xC, xn);
+	if (s == NULL)
+		R NULL;
+	r = PyString_Format(f, s);
+	Py_DECREF(f);
+	Py_DECREF(s);
+	R r;
 }
 
 /** Array interface **/
@@ -322,7 +349,23 @@ K_array_typestr_get(KObject *self)
 	return PyString_FromFormat("%c%c%d", typekind == 'O'?'|':endian,
 				   typekind, k_itemsize(k));
 }
-
+static PyObject *K_K(PyTypeObject *type, PyObject *arg);
+static PyObject *
+K_call_any(KObject *self, PyObject *args)
+{
+	switch (PyTuple_GET_SIZE(args)) {
+	case 0:
+		R K_a0(self);
+	case 1:
+		R K_a1(self, PyTuple_GET_ITEM(args, 0));
+	case 2:
+		R K_a2(self, args);
+	case 3:
+		R K_a3(self, args);
+	}
+	R K_dot(self, K_K(self->ob_type, args));
+}
+# define K_call K_call_any
 
 static int
 k_ktype(int typekind, int itemsize)
@@ -1164,6 +1207,7 @@ static PyMethodDef
 K_methods[] = {
 	{"_func", (PyCFunction)K_func,METH_O|METH_CLASS, "func"}, 
 	{"_dot", (PyCFunction)K_dot,  METH_O, "dot"},
+	{"_a0", (PyCFunction)K_a0,  METH_NOARGS, "a0"},
 	{"_a1", (PyCFunction)K_a1,  METH_O, "a1"},
 	{"_a2", (PyCFunction)K_a2,  METH_VARARGS, "a2"},
 	{"_a3", (PyCFunction)K_a3,  METH_VARARGS, "a3"},
@@ -1286,7 +1330,7 @@ static PyTypeObject K_Type = {
 	0,                      /*tp_getattr*/
         0,                      /*tp_setattr*/
 	0,			/*tp_compare*/
-	0,			/*tp_repr*/
+	(reprfunc)K_repr,     	/*tp_repr*/
 	0,			/*tp_as_number*/
 	0,                      /*tp_as_sequence*/
 	0,			/*tp_as_mapping*/
@@ -2065,6 +2109,8 @@ k3io_init(void)
 	t2l=k(0,"`hh`mm`ss$\\:",(K)0);
 	v2l=k(0,"`hh`mm`ss$\\:",(K)0);
 	u2l=k(0,"`hh`mm$\\:",(K)0);
+	k_none = k(0, "::", (K)0);
+	k_repr = k(0, "-3!", (K)0);
 }
 
 /* k3io end */
