@@ -51,6 +51,7 @@ typedef int Py_ssize_t;
 typedef Py_ssize_t (*readbufferproc)(PyObject *, Py_ssize_t, void **);
 typedef Py_ssize_t (*writebufferproc)(PyObject *, Py_ssize_t, void **);
 typedef Py_ssize_t (*segcountproc)(PyObject *, Py_ssize_t *);
+#define PyInt_FromSsize_t PyInt_FromLong
 #endif
 
 PyDoc_STRVAR(module_doc,
@@ -155,7 +156,7 @@ K_a0(KObject *self)
 	K x = self->x;
 	if (xt < 100) {
 		Py_INCREF(self);
-		return self;
+		return (PyObject*)self;
 	}
 	R KObject_FromK(self->ob_type, a1(x, k_none));
 }
@@ -186,6 +187,114 @@ K_a3(KObject *self, PyObject *args)
 	if (PyArg_ParseTuple(args, "O&O&O&", &getK, &x, &getK, &y, &getK, &z))
 		R KObject_FromK(self->ob_type, a3(self->x, x, y, z));
 	return NULL;
+}
+
+static PyObject*
+K_ja(KObject *self, PyObject *arg)
+{
+	switch (self->x->t) {
+	case 0: {
+		if (K_Check(arg))
+			jk(&self->x, r1(((KObject*)arg)->x));
+		else
+			R PyErr_Format(PyExc_TypeError, "K._ja: expected K object, not %s", 
+				       arg->ob_type->tp_name);
+		break;
+	}
+	case KB: {
+		if (PyBool_Check(arg)) {
+			G a = arg == Py_True;
+			ja(&self->x, &a);
+		}
+		else
+			R PyErr_Format(PyExc_TypeError, "K._ja: expected bool, not %s", 
+				       arg->ob_type->tp_name);
+		break;
+	}
+	case KG: {
+		G a = PyInt_AsLong(arg); /* XXX: need bounds checking */
+		if (a == (G)-1 && PyErr_Occurred())
+			R NULL;
+		else
+			ja(&self->x, &a);
+		break;
+	}
+	case KH: {
+		H a = PyInt_AsLong(arg);  /* XXX: need bounds checking */
+		if (a == -1 && PyErr_Occurred())
+			R NULL;
+		else
+			ja(&self->x, &a);
+		break;
+	}
+	case KI: {
+		I a = PyInt_AsLong(arg);  /* XXX: need bounds checking */
+		if (a == -1 && PyErr_Occurred())
+			R NULL;
+		else
+			ja(&self->x, &a);
+		break;
+	}
+	case KJ: {
+		J a = PyInt_AsLong(arg);  /* XXX: need bounds checking */
+		if (a == -1 && PyErr_Occurred())
+			R NULL;
+		else
+			ja(&self->x, &a);
+		break;
+	}
+	case KE: {
+		E a = PyFloat_AsDouble(arg);  /* XXX: need bounds checking */
+		if (a == -1 && PyErr_Occurred())
+			R NULL;
+		else
+			ja(&self->x, &a);
+		break;
+	}
+	case KF: {
+		F a = PyFloat_AsDouble(arg);  /* XXX: need bounds checking */
+		if (a == -1 && PyErr_Occurred())
+			R NULL;
+		else
+			ja(&self->x, &a);
+		break;
+	}
+	case KC: {
+		char *a; Py_ssize_t n;
+		if (-1 == PyString_AsStringAndSize(arg, &a, &n))
+			R NULL;
+		if (n != 1)
+			R PyErr_Format(PyExc_TypeError, "K.ja: a one-, not %zd-character string", n);
+		ja(&self->x, a);
+		break;
+	}
+	case KS: {
+		char *a; Py_ssize_t n;
+		if (-1 == PyString_AsStringAndSize(arg, &a, &n))
+			R NULL;
+		js(&self->x, sn(a, n));
+		break;
+	}
+	case KM: {
+		
+	}
+	case KD: {
+
+	}
+	case KZ: {
+
+	}
+	case KU: {
+
+	}
+	case KV: {
+
+	}
+	case KT: {
+		R PyErr_Format(PyExc_NotImplementedError, "appending to type %d", (int)self->x->t);
+	}
+	}
+	Py_RETURN_NONE;
 }
 
 static K k_repr;
@@ -1211,6 +1320,7 @@ K_methods[] = {
 	{"_a1", (PyCFunction)K_a1,  METH_O, "a1"},
 	{"_a2", (PyCFunction)K_a2,  METH_VARARGS, "a2"},
 	{"_a3", (PyCFunction)K_a3,  METH_VARARGS, "a3"},
+	{"_ja", (PyCFunction)K_ja,  METH_O, "append atom"},
 	{"_k",	(PyCFunction)K_k,  METH_VARARGS|METH_CLASS, K_k_doc},
 	{"_knk",(PyCFunction)K_knk, METH_VARARGS|METH_CLASS, K_knk_doc},
 	{"_ktd",(PyCFunction)K_ktd, METH_VARARGS|METH_CLASS, K_ktd_doc},

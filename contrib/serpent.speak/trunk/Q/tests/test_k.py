@@ -9,6 +9,7 @@ for m in ('func k knk ktd err'
           ' I F S K xT xD').split():
     globals()[m] = getattr(_k.K, '_'+m)
 del m
+q = lambda *args: k(0,*args)
 
 def kstr(x):
     return k(0, '-3!', x).inspect('s')
@@ -211,6 +212,55 @@ class ReprTestCase(unittest.TestCase):
         self.failUnlessEqual(repr(kj(1)), "k('1j')")
         self.failUnlessEqual(repr(kf(1)), "k('1f')")
         
+class JoinTestCase(unittest.TestCase):
+    def test_byte(self):
+        x = q('0x0102')
+        x._ja(3)
+        y = q('0x010203')
+        self.failUnless(eq(x, y))
+        
+    def test_short(self):
+        x = q('1 2h')
+        x._ja(3)
+        y = q('1 2 3h')
+        self.failUnless(eq(x, y))
+        
+    def test_int(self):
+        x = q('1 2')
+        x._ja(3)
+        y = q('1 2 3')
+        self.failUnless(eq(x, y))
+        
+    def test_long(self):
+        x = q('1 2j')
+        x._ja(3)
+        y = q('1 2 3j')
+        self.failUnless(eq(x, y))
 
+    def test_real(self):
+        x = q('1 2e')
+        x._ja(3)
+        y = q('1 2 3e')
+        self.failUnless(eq(x, y))
+
+    def test_float(self):
+        x = q('1 2f')
+        x._ja(3)
+        y = q('1 2 3f')
+        self.failUnless(eq(x, y))
+
+    def test_str(self):
+        x = q('"ab"')
+        x._ja('c')
+        y = q('"abc"')
+        self.failUnless(eq(x, y))
+        
+    def test_sym(self):
+        x = q('`a`b')
+        x._ja('c')
+        y = q('`a`b`c')
+        self.failUnless(eq(x, y))
+
+        
 if __name__ == '__main__':
     unittest.main()
