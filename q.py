@@ -242,7 +242,17 @@ class K(_k.K):
         [k('`abc'), k('"abc"')]
 
         """
-        return super(K, self).__call__(*map(K, args))
+        n = len(args)
+        kargs = map(K, args)
+        if not n:
+            return self
+        if n == 1:
+            return self._a1(*kargs)
+        if n == 2:
+            return self._a2(*kargs)
+        if n == 3:
+            return self._a3(*kargs)
+        return self._dot(self._knk(n, *kargs))
 
     def _call_lambda(self, *args, **kwds):
         """call the k lambda
@@ -295,6 +305,22 @@ class K(_k.K):
         if t == 99:
             return self._k(0, '{(0!x)`%s}'%a, self)
         raise AttributeError
+
+
+    def __str__(self):
+        """implements str(x)
+
+        Symbols, character arrays and atoms are unchanged
+        >>> map(str, map(q, '`abc "def" "x"'.split()))
+        ['abc', 'def', 'x']
+        """
+        t = self.inspect('t')
+        if t in (_k.KC, -_k.KS, -_k.KC):
+            return self.inspect('s')
+        return self._k(0, "-3!", self).inspect('s')
+
+    def __repr__(self):
+        return 'k(%r)' % self._k(0, "-3!", self).inspect('s')
 
     def __int__(self):
         """converts K scalars to python int
@@ -380,28 +406,6 @@ class K(_k.K):
             return self
         return self._a1(client)
 
-    def keys(self):
-        """returns q('key', self)
-
-        Among other uses, enables interoperability between q and
-        python dicts.
-        >>> dict(q('`a`b!1 2'))
-        {'a': k('1'), 'b': k('2')}
-        >>> d = {}; d.update(q('`a`b!1 2'))
-        >>> d
-        {'a': k('1'), 'b': k('2')}
-
-        An elegant idiom to unpack q tables:
-        >>> u = locals().update
-        >>> for r in q('([]a:`x`y`z;b:1 2 3;c:"XYZ")'):
-        ...     u(r); print a, b, c
-        x 1 X
-        y 2 Y
-        z 3 Z
-                    
-        """
-        return self._k(0, 'key', self)
-    
     __doc__ += """
     Q objects can be used in Python arithmetic expressions
 
@@ -522,31 +526,35 @@ def inttok(x):
         return K._kj(x)
 
 
-datetimetok = K._kzz
-__doc__ += """
-datetimetok converts python datetime to k (DEPRECATED)
+def datetimetok(x):
+    """converts python datetime to k
 
->>> datetimetok(datetime(2006,5,3,2,43,25,999000))
-k('2006.05.03T02:43:25.999')
-"""
+    >>> datetimetok(datetime(2006,5,3,2,43,25,999000))
+    k('2006.05.03T02:43:25.999')
+    """
+    midnight = x.combine(x, time(0))
+    delta = x - midnight
+    return K._kz(x.toordinal() - 730120
+                 + (delta.seconds + 0.000001*delta.microseconds)/86400.)
 
-datetok = K._kdd
-__doc__ += """
-datetok converts python date to k (DEPRECATED)
+def datetok(x):
+    """converts python date to k
 
->>> datetok(date(2006,5,3))
-k('2006.05.03')
+    >>> datetok(date(2006,5,3))
+    k('2006.05.03')
+    """
+    return K._kd(x.toordinal() - 730120)
 
-"""
+def timetok(x):
+    """converts python time to k
 
-timetok = K._ktt
-__doc__ += """
-timetok converts python time to k (DEPRECATED)
-
->>> timetok(time(12,30,0,999000))
-k('12:30:00.999')
-
-"""
+    >>> timetok(time(12,30,0,999000))
+    k('12:30:00.999')
+    """
+    return K._kt(x.microsecond//1000
+                 + 1000*(x.second
+                         + 60*(x.minute
+                               + 60*x.hour)))
 
 def _ni(x): raise NotImplementedError
 _X = {str:K._S, int:K._I, float:K._F, date:_ni, time:_ni, datetime:_ni}
@@ -594,9 +602,9 @@ converters = {
     int: inttok,
     long: inttok,
     float: K._kf,
-    date: K._kdd,
-    datetime: K._kzz,
-    time: K._ktt,
+    date: datetok,
+    datetime: datetimetok,
+    time: timetok,
     str: K._ks,
     list: listtok,
     tuple: tupletok,

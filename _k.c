@@ -24,9 +24,7 @@ static char __version__[] = "$Revision: 1.40 $";
                 +-------+
 */
 #include "Python.h"
-#include "datetime.h"
 #include "k.h"
-#include "math.h"
 /* these should be in k.h */
 ZK km(I i){K x = ka(-KM);xi=i;R x;}
 ZK ku(I i){K x = ka(-KU);xi=i;R x;}
@@ -51,7 +49,6 @@ typedef int Py_ssize_t;
 typedef Py_ssize_t (*readbufferproc)(PyObject *, Py_ssize_t, void **);
 typedef Py_ssize_t (*writebufferproc)(PyObject *, Py_ssize_t, void **);
 typedef Py_ssize_t (*segcountproc)(PyObject *, Py_ssize_t *);
-#define PyInt_FromSsize_t PyInt_FromLong
 #endif
 
 PyDoc_STRVAR(module_doc,
@@ -91,8 +88,6 @@ PyDoc_STRVAR(module_doc,
 "t  4    00:00:00.000 time	                 \n"
 "*  4    `s$`         enum	                 \n"
 );
-extern void clr(void);
-extern char* es;
 /* K objects */
 static PyObject *ErrorObject;
 static PyObject *
@@ -101,6 +96,8 @@ KObject_FromK(PyTypeObject *type, K x)
 	if (!type) 
 		type = &K_Type;
 	if (!x) {
+		extern void clr(void);
+		extern char* es;
 		PyErr_SetString(ErrorObject, es);
 		clr();
 		return NULL;
@@ -149,17 +146,6 @@ K_dot(KObject *self, PyObject *args)
 }
 
 extern K a1(K,K);
-static K k_none;
-static PyObject*
-K_a0(KObject *self)
-{
-	K x = self->x;
-	if (xt < 100) {
-		Py_INCREF(self);
-		return (PyObject*)self;
-	}
-	R KObject_FromK(self->ob_type, a1(x, k_none));
-}
 static PyObject*
 K_a1(KObject *self, PyObject *arg)
 {
@@ -190,114 +176,18 @@ K_a3(KObject *self, PyObject *args)
 }
 
 static PyObject*
-K_ja(KObject *self, PyObject *arg)
+K_call(KObject *self, PyObject *args, PyObject *kw)
 {
-	switch (self->x->t) {
-	case 0: {
-		if (K_Check(arg))
-			jk(&self->x, r1(((KObject*)arg)->x));
-		else
-			R PyErr_Format(PyExc_TypeError, "K._ja: expected K object, not %s", 
-				       arg->ob_type->tp_name);
-		break;
-	}
-	case KB: {
-		if (PyBool_Check(arg)) {
-			G a = arg == Py_True;
-			ja(&self->x, &a);
-		}
-		else
-			R PyErr_Format(PyExc_TypeError, "K._ja: expected bool, not %s", 
-				       arg->ob_type->tp_name);
-		break;
-	}
-	case KG: {
-		G a = PyInt_AsLong(arg); /* XXX: need bounds checking */
-		if (a == (G)-1 && PyErr_Occurred())
-			R NULL;
-		else
-			ja(&self->x, &a);
-		break;
-	}
-	case KH: {
-		H a = PyInt_AsLong(arg);  /* XXX: need bounds checking */
-		if (a == -1 && PyErr_Occurred())
-			R NULL;
-		else
-			ja(&self->x, &a);
-		break;
-	}
-	case KI: {
-		I a = PyInt_AsLong(arg);  /* XXX: need bounds checking */
-		if (a == -1 && PyErr_Occurred())
-			R NULL;
-		else
-			ja(&self->x, &a);
-		break;
-	}
-	case KJ: {
-		J a = PyInt_AsLong(arg);  /* XXX: need bounds checking */
-		if (a == -1 && PyErr_Occurred())
-			R NULL;
-		else
-			ja(&self->x, &a);
-		break;
-	}
-	case KE: {
-		E a = PyFloat_AsDouble(arg);  /* XXX: need bounds checking */
-		if (a == -1 && PyErr_Occurred())
-			R NULL;
-		else
-			ja(&self->x, &a);
-		break;
-	}
-	case KF: {
-		F a = PyFloat_AsDouble(arg);  /* XXX: need bounds checking */
-		if (a == -1 && PyErr_Occurred())
-			R NULL;
-		else
-			ja(&self->x, &a);
-		break;
-	}
-	case KC: {
-		char *a; Py_ssize_t n;
-		if (-1 == PyString_AsStringAndSize(arg, &a, &n))
-			R NULL;
-		if (n != 1)
-			R PyErr_Format(PyExc_TypeError, "K.ja: a one-, not %zd-character string", n);
-		ja(&self->x, a);
-		break;
-	}
-	case KS: {
-		char *a; Py_ssize_t n;
-		if (-1 == PyString_AsStringAndSize(arg, &a, &n))
-			R NULL;
-		js(&self->x, sn(a, n));
-		break;
-	}
-	case KM: {
+	I n = PyTuple_GET_SIZE(args);
+	K x;
+	if (kw) {
 		
 	}
-	case KD: {
+	x = ktn(0,n);
 
-	}
-	case KZ: {
-
-	}
-	case KU: {
-
-	}
-	case KV: {
-
-	}
-	case KT: {
-		R PyErr_Format(PyExc_NotImplementedError, "appending to type %d", (int)self->x->t);
-	}
-	}
-	Py_RETURN_NONE;
+	return KObject_FromK(self->ob_type, k(0, ".", self->x, x));
 }
 
-static K k_repr;
 static PyObject*
 K_str(KObject *self)
 {
@@ -307,37 +197,9 @@ K_str(KObject *self)
 		return PyString_FromStringAndSize(xC, xn);
 	case -KS:
 		return PyString_FromString(xs);
-	case -KC:
-		return PyString_FromStringAndSize(&xg, 1);
 	}
-	x = a1(k_repr, x);
-	if (!x) {
-		PyErr_SetString(ErrorObject, es);
-		clr();
-		return NULL;
-	}
-	return PyString_FromStringAndSize(xC, xn);
-}
-static PyObject*
-K_repr(KObject *self)
-{
-	K x;
-	PyObject *f, *s, *r;
-	x = a1(k_repr, self->x);
-	if (!x) {
-		clr();
-		return PyString_FromFormat("<k object at %p(%p)>", self, self->x);
-	}
-	f = PyString_FromString("k(%r)");
-	if (f == NULL)
-		R NULL;
-	s = PyString_FromStringAndSize(xC, xn);
-	if (s == NULL)
-		R NULL;
-	r = PyString_Format(f, s);
-	Py_DECREF(f);
-	Py_DECREF(s);
-	R r;
+	return PyString_FromFormat("<%s object of type %d at 0x%p>",
+				   self->ob_type->tp_name, xt, x);
 }
 
 /** Array interface **/
@@ -458,23 +320,7 @@ K_array_typestr_get(KObject *self)
 	return PyString_FromFormat("%c%c%d", typekind == 'O'?'|':endian,
 				   typekind, k_itemsize(k));
 }
-static PyObject *K_K(PyTypeObject *type, PyObject *arg);
-static PyObject *
-K_call_any(KObject *self, PyObject *args)
-{
-	switch (PyTuple_GET_SIZE(args)) {
-	case 0:
-		R K_a0(self);
-	case 1:
-		R K_a1(self, PyTuple_GET_ITEM(args, 0));
-	case 2:
-		R K_a2(self, args);
-	case 3:
-		R K_a3(self, args);
-	}
-	R K_dot(self, K_K(self->ob_type, args));
-}
-# define K_call K_call_any
+
 
 static int
 k_ktype(int typekind, int itemsize)
@@ -623,13 +469,12 @@ K_ATOM(b, G, b, "returns a K bool")
 K_ATOM(g, G, b, "returns a K byte")
 K_ATOM(h, H, h, "returns a K short")
 K_ATOM(i, I, i, "returns a K int")
-ZS th(I i){SW(i){CS(1,R "st")CS(2,R "nd")CS(3,R "rd")};R "th";}
+ZS th(I i){SW(i){CS(1,R "st")CS(2,R "nd")};R "th";}
 PyDoc_STRVAR(K_I_doc,
 	     "returns a K int list");
 static PyObject *
 K_I(PyTypeObject *type, PyObject *arg)
 {
-	long item;
 	PyObject *seq = PySequence_Fast(arg, "K._I: not a sequence");
 	if (seq == NULL)
 		return NULL;
@@ -637,18 +482,13 @@ K_I(PyTypeObject *type, PyObject *arg)
 	K x = ktn(KI, n);
 	for (i = 0; i < n; ++i) {
 		PyObject *o = PySequence_Fast_GET_ITEM(seq, i);
-		if (PyInt_Check(o))
-			item = PyInt_AS_LONG(o);
-		else {
-			if (o == Py_None)
-				item = ni;
-			else {
-				r0(x);
-				PyErr_Format(PyExc_TypeError,
-					     "K._I: %d-%s item is not an int", i+1, th(i+1));
-				return NULL;
-			}
+		if (!PyInt_Check(o)) {
+			r0(x);
+			PyErr_Format(PyExc_TypeError,
+				     "K._I: %d-%s item is not an int", i+1, th(i+1));
+			return NULL;
 		}
+		long item = PyInt_AS_LONG(o);
 		if (sizeof(I) != sizeof(long) && item != (I)item) {
 			r0(x);
 			PyErr_Format(PyExc_TypeError,
@@ -697,66 +537,6 @@ K_ks(PyTypeObject *type, PyObject *args)
 		return NULL;
 	}
 	K x = ks(sn(s,n));
-	if (!type) {
-		type = &K_Type;
-	}
-	return KObject_FromK(type, x);
-}
-
-PyDoc_STRVAR(K_kdd_doc,
-	     "converts datetime.date to q date");
-static PyObject *
-K_kdd(PyTypeObject *type, PyDateTime_Date *arg)
-{
-	if (!PyDate_Check(arg))
-		return PyErr_Format(PyExc_TypeError, "expected a date object, not %s",
-				    arg->ob_type->tp_name);
-	int y, m, d;
-	y = PyDateTime_GET_YEAR(arg);
-	m = PyDateTime_GET_MONTH(arg);
-	d = PyDateTime_GET_DAY(arg);
-	K x = kd(ymd(y,m,d));
-	if (!type) {
-		type = &K_Type;
-	}
-	return KObject_FromK(type, x);
-}
-PyDoc_STRVAR(K_ktt_doc,
-	     "converts datetime.time to q time");
-static PyObject *
-K_ktt(PyTypeObject *type, PyObject *arg)
-{
-	if (!PyTime_Check(arg))
-		return PyErr_Format(PyExc_TypeError, "expected a time object, not %s",
-				    arg->ob_type->tp_name);
-	int h, m, s, u;
-	h = PyDateTime_TIME_GET_HOUR(arg);
-	m = PyDateTime_TIME_GET_MINUTE(arg);
-	s = PyDateTime_TIME_GET_SECOND(arg);
-	u = PyDateTime_TIME_GET_MICROSECOND(arg);
-	K x = kt(((h*60+m)*60+s)*1000+u/1000);
-	if (!type) {
-		type = &K_Type;
-	}
-	return KObject_FromK(type, x);
-}
-PyDoc_STRVAR(K_kzz_doc,
-	     "converts datetime.datetime to q datetime");
-static PyObject *
-K_kzz(PyTypeObject *type, PyObject *arg)
-{
-	if (!PyDateTime_Check(arg))
-		return PyErr_Format(PyExc_TypeError, "expected a date object, not %s",
-				    arg->ob_type->tp_name);
-	int y, m, d, h, u, s, i;
-	y = PyDateTime_GET_YEAR(arg);
-	m = PyDateTime_GET_MONTH(arg);
-	d = PyDateTime_GET_DAY(arg);
-	h = PyDateTime_DATE_GET_HOUR(arg);
-	u = PyDateTime_DATE_GET_MINUTE(arg);
-	s = PyDateTime_DATE_GET_SECOND(arg);
-	i = PyDateTime_DATE_GET_MICROSECOND(arg);
-	K x = kz(ymd(y,m,d)+(((h*60+u)*60+s)*1000+i/1000)/(24*60*60*1000.));
 	if (!type) {
 		type = &K_Type;
 	}
@@ -1303,24 +1083,13 @@ K_func(PyTypeObject *type, PyObject *func)
 	return KObject_FromK(type, x);
 }
 
-PyDoc_STRVAR(K_id_doc,
-	     "x._id(k) -> id of k object\n"
-	     "\n");
-static PyObject *
-K_id(KObject *self)
-{
-	return PyInt_FromSsize_t((Py_ssize_t)self->x);
-}
-
 static PyMethodDef 
 K_methods[] = {
 	{"_func", (PyCFunction)K_func,METH_O|METH_CLASS, "func"}, 
 	{"_dot", (PyCFunction)K_dot,  METH_O, "dot"},
-	{"_a0", (PyCFunction)K_a0,  METH_NOARGS, "a0"},
 	{"_a1", (PyCFunction)K_a1,  METH_O, "a1"},
 	{"_a2", (PyCFunction)K_a2,  METH_VARARGS, "a2"},
 	{"_a3", (PyCFunction)K_a3,  METH_VARARGS, "a3"},
-	{"_ja", (PyCFunction)K_ja,  METH_O, "append atom"},
 	{"_k",	(PyCFunction)K_k,  METH_VARARGS|METH_CLASS, K_k_doc},
 	{"_knk",(PyCFunction)K_knk, METH_VARARGS|METH_CLASS, K_knk_doc},
 	{"_ktd",(PyCFunction)K_ktd, METH_VARARGS|METH_CLASS, K_ktd_doc},
@@ -1340,13 +1109,10 @@ K_methods[] = {
 	{"_S",	(PyCFunction)K_S, METH_O|METH_CLASS, K_S_doc},
 	{"_km",	(PyCFunction)K_km, METH_VARARGS|METH_CLASS, K_km_doc},
 	{"_kd",	(PyCFunction)K_kd, METH_VARARGS|METH_CLASS, K_kd_doc},
-	{"_kdd",(PyCFunction)K_kdd, METH_O|METH_CLASS, K_kdd_doc},
 	{"_kz",	(PyCFunction)K_kz, METH_VARARGS|METH_CLASS, K_kz_doc},
-	{"_kzz",(PyCFunction)K_kzz, METH_O|METH_CLASS, K_kzz_doc},
 	{"_ku",	(PyCFunction)K_ku, METH_VARARGS|METH_CLASS, K_ku_doc},
 	{"_kv",	(PyCFunction)K_kv, METH_VARARGS|METH_CLASS, K_kv_doc},
 	{"_kt",	(PyCFunction)K_kt, METH_VARARGS|METH_CLASS, K_kt_doc},
-	{"_ktt",(PyCFunction)K_ktt, METH_O|METH_CLASS, K_ktt_doc},
 	{"_kp",	(PyCFunction)K_kp, METH_VARARGS|METH_CLASS, K_kp_doc},
 	{"_ktn",(PyCFunction)K_ktn, METH_VARARGS|METH_CLASS, K_ktn_doc},
 	{"_xT",	(PyCFunction)K_xT, METH_VARARGS|METH_CLASS, K_xT_doc},
@@ -1357,7 +1123,6 @@ K_methods[] = {
                                    METH_O|METH_CLASS, K_from_array_interface_doc},
 
 	{"inspect", (PyCFunction)K_inspect, METH_VARARGS, K_inspect_doc},
-	{"_id", (PyCFunction)K_id,  METH_NOARGS, K_id_doc},
 	{NULL,		NULL}		/* sentinel */
 };
 
@@ -1440,7 +1205,7 @@ static PyTypeObject K_Type = {
 	0,                      /*tp_getattr*/
         0,                      /*tp_setattr*/
 	0,			/*tp_compare*/
-	(reprfunc)K_repr,     	/*tp_repr*/
+	0,			/*tp_repr*/
 	0,			/*tp_as_number*/
 	0,                      /*tp_as_sequence*/
 	0,			/*tp_as_mapping*/
@@ -1506,11 +1271,26 @@ _k_ymd(PyObject *self, PyObject *args)
 }
 
 
+PyDoc_STRVAR(_k_kid_doc,
+	     "kid(k) -> id of k object\n"
+	     "\n");
+
+static PyObject *
+_k_kid(PyObject *self, PyObject *args)
+{
+	K k;
+	if (!PyArg_ParseTuple(args, "O&:kid", getK, &k))
+		return NULL;
+	return PyInt_FromLong((long)k);
+}
+
+
 /* List of functions defined in the module */
 
 static PyMethodDef _k_methods[] = {
 	{"khp",		_k_khp,		METH_VARARGS, _k_khp_doc},
 	{"ymd",		_k_ymd,		METH_VARARGS, _k_ymd_doc},
+	{"kid",		_k_kid,		METH_VARARGS, _k_kid_doc},
 	{NULL,		NULL}		/* sentinel */
 };
 /*********************** K Object Iterator **************************/
@@ -1552,70 +1332,6 @@ k_iter(KObject *obj)
 	PyObject_GC_Track(it);
 	return (PyObject *)it;
 }
-static K d2l, m2l, z2l, t2l, v2l, u2l;
-static PyObject *
-d2py(I d)
-{
-	switch (d) {
-	case -wi: R PyDate_FromDate(1,1,1);
-	case wi: R PyDate_FromDate(9999,12,31);
-	case ni: Py_RETURN_NONE;
-	}
-	K y=kd(d),x=a1(d2l,y);r0(y);
-	PyObject *o = PyDate_FromDate(xI[0],xI[1],xI[2]);
-	r0(x); R o;
-}
-static PyObject *
-m2py(I d)
-{
-	switch (d) {
-	case -wi: R PyDate_FromDate(1,1,1);
-	case wi: R PyDate_FromDate(9999,12,1);
-	case ni: Py_RETURN_NONE;
-	}
-	K y=km(d),x=a1(m2l,y);r0(y);
-	PyObject *o = PyDate_FromDate(xI[0],xI[1],1);
-	r0(x); R o;
-}
-static PyObject *
-z2py(F z)
-{
-	switch (isinf(z)) {
-	case -1: R PyDateTime_FromDateAndTime(1,1,1,0,0,0,0);
-	case 1: R PyDateTime_FromDateAndTime(9999,12,31,23,59,59,999999);
-	case 0: if (isnan(z)) Py_RETURN_NONE;
-	} 
-	K y=kz(z),x=a1(z2l,y);r0(y);
-	PyObject *o =  PyDateTime_FromDateAndTime(xI[0],xI[1],xI[2],
-						  xI[3],xI[4],xI[5],
-						  (I)round((z-floor(z))*24*60*60*1e6));
-	r0(x); R o;
-}
-static PyObject *
-t2py(I t)
-{
-	if(t == ni) Py_RETURN_NONE;
-	K y=kt(t),x=a1(t2l,y);r0(y);
-	PyObject *o = PyTime_FromTime(xI[0],xI[1],xI[2],
-				       t%1000*1000);
-	r0(x); R o;
-}
-static PyObject *
-v2py(I t)
-{
-	if(t == ni) Py_RETURN_NONE;
-	K y=kv(t),x=a1(v2l,y);r0(y);
-	PyObject *o = PyTime_FromTime(xI[0],xI[1],xI[2],0);
-	r0(x); R o;
-}
-static PyObject *
-u2py(I t)
-{
-	if(t == ni) Py_RETURN_NONE;
-	K y=ku(t),x=a1(u2l,y);r0(y);
-	PyObject *o = PyTime_FromTime(xI[0],xI[1],0,0);
-	r0(x); R o;
-}
 
 static PyObject *
 kiter_next(kiterobject *it)
@@ -1643,31 +1359,17 @@ kiter_next(kiterobject *it)
 			ret = PyInt_FromLong(xG[i]);
 			break;
 		case KH:
-			ret = xH[i]==nh?Py_INCREF(Py_None),Py_None:PyInt_FromLong(xH[i]);
+			ret = PyInt_FromLong(xH[i]);
 			break;
 		case KI:
-			ret = xI[i]==ni?Py_INCREF(Py_None),Py_None:PyInt_FromLong(xI[i]);
-			break;
 		case KM:
-			ret = m2py(xI[i]);
-			break;
 		case KD:
-			ret = d2py(xI[i]);
-			break;
 		case KV:
-			ret = v2py(xI[i]);
-			break;
-		case KU:
-			ret = u2py(xI[i]);
-			break;
 		case KT:
-			ret = t2py(xI[i]);
-			break;
-		case KZ:
-			ret = z2py(xF[i]);
+			ret = PyInt_FromLong(xI[i]);
 			break;
 		case KJ:
-			ret = xJ[i]==nj?Py_INCREF(Py_None),Py_None:PyLong_FromLongLong(xJ[i]);
+			ret = PyLong_FromLongLong(xJ[i]);
 			break;
 		case KE:
 			ret = PyFloat_FromDouble(xE[i]);
@@ -2211,16 +1913,6 @@ k3io_init(void)
 	k3T[KZ]="timestamp";
 	k3c[KT]=k(0,"{(`float$x)%8.64e7}",(K)0); 
 	k3T[KT]="time";
-	PyDateTime_IMPORT;
-	/* date/time to list translations */
-	d2l=k(0,"`year`mm`dd$\\:",(K)0);
-	m2l=k(0,"`year`mm$\\:",(K)0);
-	z2l=k(0,"`year`mm`dd`hh`uu`ss$\\:",(K)0); 
-	t2l=k(0,"`hh`mm`ss$\\:",(K)0);
-	v2l=k(0,"`hh`mm`ss$\\:",(K)0);
-	u2l=k(0,"`hh`mm$\\:",(K)0);
-	k_none = k(0, "::", (K)0);
-	k_repr = k(0, "-3!", (K)0);
 }
 
 /* k3io end */
