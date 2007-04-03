@@ -1,0 +1,7 @@
+0.2
+
+Implemented iterator protocol.
+
+0.3
+
+- Added support for arrays of strings

@@ -1,0 +1,3 @@
+- Implement amend operations
+- Implement remaining functions from k.h: ja, js, jk, etc.
+- Implement callbacks into python.
