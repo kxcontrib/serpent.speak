@@ -9,7 +9,7 @@ K py(K x)
 	char *error;
 	void *h;
 	K r;
-	h = dlopen("libpython2.5.so", RTLD_NOW|RTLD_GLOBAL);
+	h = dlopen("libpython2.3.so", RTLD_NOW|RTLD_GLOBAL);
 	if (!h)
 		return krr(dlerror());
 	dlerror();    /* Clear any existing error */

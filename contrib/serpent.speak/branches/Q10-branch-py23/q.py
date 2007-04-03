@@ -592,7 +592,7 @@ def tupletok(x):
     >>> tupletok((kp("insert"), 't', (1, "abc")))
     k('("insert";`t;(1;`abc))')
     """
-    return K._K(K(i) for i in x)
+    return K._K(map(K, x))
     
 kp = K._kp
 
