@@ -1,5 +1,5 @@
 /* -*- mode: c; c-basic-offset: 8 -*- */
-static char __version__[] = "$Revision: 1.40 $";
+static char __version__[] = "$Revision: 1.45 $";
 /*
   K object layout (32 bit):
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6
@@ -91,9 +91,12 @@ PyDoc_STRVAR(module_doc,
 "t  4    00:00:00.000 time	                 \n"
 "*  4    `s$`         enum	                 \n"
 );
+/* q internals */
 extern void clr(void);
 extern char* es;
+extern K ex, ey;
 /* K objects */
+static K k_none;
 static PyObject *ErrorObject;
 static PyObject *
 KObject_FromK(PyTypeObject *type, K x)
@@ -101,7 +104,16 @@ KObject_FromK(PyTypeObject *type, K x)
 	if (!type) 
 		type = &K_Type;
 	if (!x) {
-		PyErr_SetString(ErrorObject, es);
+		if (ex) {
+			PyObject *e = PyTuple_New(3);
+			PyTuple_SET_ITEM(e, 0, PyString_FromString(es));
+			PyTuple_SET_ITEM(e, 1, KObject_FromK(type, r1(ex)));
+			PyTuple_SET_ITEM(e, 2, KObject_FromK(type, r1(ey?ey:k_none)));
+			PyErr_SetObject(ErrorObject, e);
+		}
+		else
+			PyErr_SetString(ErrorObject, es);
+		
 		clr();
 		return NULL;
 	}
@@ -149,7 +161,6 @@ K_dot(KObject *self, PyObject *args)
 }
 
 extern K a1(K,K);
-static K k_none;
 static PyObject*
 K_a0(KObject *self)
 {
@@ -1848,7 +1859,7 @@ k3io_read_vector(I t, I n, FILE* f)
 		break;
 	case -4:
 		DO(n,
-		   G buf[1024];A p = buf;
+		   G buf[1024];S p = buf;
 		   while((*p++ = getc(f)));
 		   xS[i] = sn(buf, p-buf-1));
 		break;
