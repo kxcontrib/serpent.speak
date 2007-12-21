@@ -1,5 +1,5 @@
 /* -*- mode: c; c-basic-offset: 8 -*- */
-static char __version__[] = "$Revision: 1.45 $";
+static char __version__[] = "$Revision: 1.49 $";
 /*
   K object layout (32 bit):
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6
@@ -1425,7 +1425,7 @@ static PyBufferProcs K_as_buffer = {
         (readbufferproc)K_buffer_getreadbuf,
         (writebufferproc)K_buffer_getwritebuf,
         (segcountproc)K_buffer_getsegcount,
-        NULL,
+        (charbufferproc)K_buffer_getreadbuf,
 };
 
 static PyGetSetDef K_getset[] = {
@@ -1746,6 +1746,7 @@ static PyTypeObject KObjectIter_Type = {
 };
 
 static void k3io_init(void);
+ZK k3_convert;
 /* Initialization function for the module (*must* be called init_k) */
 PyMODINIT_FUNC
 init_k(void)
@@ -1824,6 +1825,10 @@ k3io_read_symbol(FILE* f)
 ZK /* read atom from a stream */
 k3io_read_atom(I t, FILE* f)
 {
+	if (t == 6) {
+		fseek(f, 4, SEEK_CUR);
+		R r1(k_none);
+	}
 	K x = ka(-tt[t]);
 	switch (t) {
 	case 1:
@@ -1844,7 +1849,7 @@ k3io_read_atom(I t, FILE* f)
 }
 
 ZK /* read vector from a stream */
-k3io_read_vector(I t, I n, FILE* f)
+read_vector(I t, I n, FILE* f)
 {
 	K x = ktn(tt[-t], n);
 	switch (t) {
@@ -1867,14 +1872,32 @@ k3io_read_vector(I t, I n, FILE* f)
 	R x;
 }
 
+Z /* read vector from a file */ 
+K1(k3io_read_vector)
+{
+	struct header h;
+	FILE *f;
+	if (xt != -KS)
+		R krr("k3io_read_vector: type");
+	if (!(f = fopen(xs, "r")))
+		R orr("k3io_read_vector");
+	if (1 != fread(&h, sizeof(h), 1, f)) {
+		x = krr("k3io_read_vector: format short");
+		goto end;
+	}
+	x = read_vector(h.type, h.length, f);
+ end:
+	fclose(f); R x;
+}
+
 ZV /* skip to the 8 byte boundary */
-k3io_next_object(FILE *f)
+next_object(FILE *f)
 {
 	fseek(f, ~7&(7+ftell(f)), SEEK_SET);
 }
 
 ZK
-k3io_read_attrs(FILE* f)
+read_attrs(FILE* f)
 {
 	K x;
 	struct header h;
@@ -1889,21 +1912,45 @@ k3io_read_attrs(FILE* f)
 			fread(&h, sizeof(h), 1, f);
 			fread(&h, offsetof(struct header, length), 1, f);
 			kS(xx)[i] = k3io_read_symbol(f);
-			k3io_next_object(f);
+			next_object(f);
 			fread(&h, offsetof(struct header, length), 1, f);
 			if (h.type < 0) {
 				fread(&h.length, 4, 1, f);
-				kK(xy)[i] = k3io_read_vector(h.type, h.length, f);
+				kK(xy)[i] = read_vector(h.type, h.length, f);
 			}
 			else 
 				kK(xy)[i] = k3io_read_atom(h.type, f);
-			k3io_next_object(f);
+			next_object(f);
 			fread(&h, sizeof(h), 1, f);
 		}
 	}
-	k3io_next_object(f);
+	next_object(f);
 	R x;
 }
+
+Z /* read attrs from a file */ 
+K1(k3io_read_attrs)
+{
+	struct header h;
+	FILE *f;
+	if (xt != -KS)
+		R krr("k3io_read_attrs: type");
+	if (!(f = fopen(xs, "r")))
+		R orr("k3io_read_attrs");
+	if (1 != fread(&h, sizeof(h), 1, f)) {
+		x = krr("k3io_read_attrs: format short");
+		goto end;
+	}	
+	next_object(f);
+	fread(&h, sizeof(h), 1, f);
+	read_vector(h.type, h.length, f);
+	next_object(f);
+	fread(&h, sizeof(h), 1, f);
+	x = read_attrs(f);
+ end:
+	fclose(f); R x;
+}
+
 
 ZK
 k3io_read_table(K x)
@@ -1929,11 +1976,11 @@ k3io_read_table(K x)
 		fread(&h, sizeof(h), 1, f);
 		fread(&h, offsetof(struct header, length), 1, f);
 		kS(xx)[i] = k3io_read_symbol(f);
-		k3io_next_object(f);
+		next_object(f);
 		fread(&h, sizeof(h), 1, f);
-		v = k3io_read_vector(h.type, h.length, f);
-		k3io_next_object(f);
-		d = k3io_read_attrs(f); 
+		v = read_vector(h.type, h.length, f);
+		next_object(f);
+		d = read_attrs(f); 
 		kK(xy)[i] = k(0, ".k3.convert", r1(v), r1(d), (K)0);
 	}
 	x = xT(x);
@@ -1965,8 +2012,8 @@ k3io_read_splayed(K x)
 	}
 	fread(&h, sizeof(h), 1, f);
 	x = xD(NULL, ktn(0,h.length));
-	xx = k3io_read_vector(h.type, h.length, f);
-	k3io_next_object(f);
+	xx = read_vector(h.type, h.length, f);
+	next_object(f);
 	fread(&h, sizeof(h), 1, f);
 	I i, n = h.length;
 	for (i = 0; i < n; ++i) {
@@ -1976,11 +2023,12 @@ k3io_read_splayed(K x)
 		g =  fopen(strcat(strcat(strcat(strcpy(kC(buf),dir),"/"),col),".l"), "r");
 		r0(buf);
 		fread(&h, sizeof(h), 1, g);
-		v = k3io_read_vector(h.type, h.length, g);
+		v = read_vector(h.type, h.length, g);
 		fclose(g);
-		k3io_next_object(f);
-		d = k3io_read_attrs(f);
-		kK(xy)[i] = k(0, ".k3.convert", r1(v), r1(d), (K)0);
+		next_object(f);
+		d = read_attrs(f);
+		kK(xy)[i] = a2(k3_convert, v, d);
+		r0(v); r0(d);
 	}
 	x = xT(x);
  end:
@@ -2119,12 +2167,12 @@ write_dict(FILE *f, K x)
 			R -1;
 		if (write_symbol(f, kS(xx)[i]))
 			R -1;
-		k3io_next_object(f);
+		next_object(f);
 		K c = k3convert(kK(xy)[i], &type);
 		if (write_vector(f, c))
 			R r0(c),-1;
 		r0(c);
-		k3io_next_object(f);
+		next_object(f);
 		if (type) {
 			if (write_header(f, 5, 1))
 				R -1;
@@ -2132,10 +2180,10 @@ write_dict(FILE *f, K x)
 				R -1;
 			if (write_symbol(f, "T"))
 				R -1;
-			k3io_next_object(f);
+			next_object(f);
 			if (write_symbol(f, type))
 				R -1;
-			k3io_next_object(f);
+			next_object(f);
 		}
 		if (write_header(f, 6, 0))
 				R -1;
@@ -2185,32 +2233,47 @@ k3io_write_splayed(K x, K y)
 {
 	if (xt != -KS)
 		R krr("type");
-	if (!mkdir(xs, 0777))
-		R orr("k3io_write_splayed");
+	if (mkdir(xs, 0777) != 0)
+		R orr("k3io_write_splayed[mkdir]");
 	if (y->t != XT)
 		R krr("type");
 	y = y->k; /* unflip */
-	/*
-	I i, n = kK(y)[0]->n;
-	for (i = 0; i = n; ++i) {
-		write_vector(xs, kK(kK(y)[0])[i]->s,
-			     kK(kK(y)[1])[i])
+	K cols = kK(y)[0], vals = kK(y)[1]; 
+	I i, n = cols->n;
+	K ln =  k(0, ",", kp(xs), kpn("/.l", 4), (K)0);
+	FILE *l = fopen(kC(ln), "w"); r0(ln);
+	write_header(l, 0, 2);
+	next_object(l);
+	write_vector(l, cols);
+	next_object(l);
+	write_header(l, 0, cols->n); 
+	for (i = 0; i < n; ++i) {
+		K fn = k(0, "sv", kc('/'), knk(2, kp(xs), kp(kS(cols)[i])), (K)0);
+		fn = k(0, ",", fn, kpn(".l", 3), (K)0);
+		FILE *f = fopen(kC(fn), "w"); r0(fn);
+		write_vector(f, kK(vals)[i]);
+		if (fclose(f)) 
+			R orr("k3io_write_splayed"); 
+		write_header(l, 6, 0);
 	}
-	*/
-	R x;
+	if (fclose(l)) 
+		R orr("k3io_write_splayed"); 
+
+	R r1(x);
 }
 
 void
 k3io_init(void)
 {
 	k(0, "{.k3.rt::x}", r1(kl(1, k3io_read_table)), (K)0);
+	k(0, "{.k3.rv::x}", r1(kl(1, k3io_read_vector)), (K)0);
 	k(0, "{.k3.rs::x}", r1(kl(1, k3io_read_splayed)), (K)0);
+	k(0, "{.k3.ra::x}", r1(kl(1, k3io_read_attrs)), (K)0);
 	k(0, "{.k3.wt::x}", r1(kl(2, k3io_write_table)), (K)0);
 	k(0, "{.k3.ws::x}", r1(kl(2, k3io_write_splayed)), (K)0);
 	k(0, "{.k3.wv::x}", r1(kl(2, k3io_write_vector)), (K)0);
-	k(0, ".k3.convert:{"
-	  "C:`date`time!(2035.01.01+;::);"
-	  "$[(::)~y;x;$[null c:y`T;x;C[c]x]]}", (K)0);
+	k3_convert = k(0, "{C:`date`time!(2035.01.01+;::);"
+		       "$[(::)~y;x;$[null c:y`T;x;C[c]x]]}", (K)0);
 	DO(20,k3c[i]=k(0,"::",(K)0));
 	k3c[KB]=k3c[KG]=k3c[KH]=k(0,"`int$",(K)0);
 	k3c[KE]=k(0,"`float$",(K)0); 
