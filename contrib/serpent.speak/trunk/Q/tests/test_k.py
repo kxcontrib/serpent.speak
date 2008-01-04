@@ -178,7 +178,7 @@ class CallsTestCase(unittest.TestCase):
         self.failUnless(eq(x, y))
 
     def test_a3(self):
-        x = k(0, 'list')._a3(ki(1), ki(2), ki(3))
+        x = k(0, 'plist')._a3(ki(1), ki(2), ki(3))
         y = I([1,2,3])
         self.failUnless(eq(x, y))
 

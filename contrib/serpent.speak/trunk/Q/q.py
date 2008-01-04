@@ -174,9 +174,9 @@ class K(_k.K):
     ---------------
 
     >>> from Numeric import asarray, array
-    >>> asarray(k("1 2 3"))
-    array([1, 2, 3])
-    >>> K(array([1, 2, 3]))
+    >>> asarray(k("1 2 3h"))
+    array([1, 2, 3],'s')
+    >>> K(array([1, 2, 3],'i'))
     k('1 2 3')
 
     K scalars behave like Numeric scalars
@@ -605,13 +605,18 @@ converters = {
     }
 
 try:
-    from MA import array as ma_array
+    import MA, Numeric
 except ImportError:
     pass
 else:
-    null = {'l': int(q("0N")), 'f': float(q("0n")),
-            'O': "",}
-    converters[ma_array] = lambda(a): K(a.filled(null[a.typecode()]))
+    null = {}
+    for typecode in "fislO":
+        null[typecode] = K(Numeric.array([],typecode))[0]
+    del typecode
+    converters[MA.array] = lambda(a): K(a.filled(null[a.typecode()]))
+    # Make sure MA does not mess with array repr:
+    MA.set_print_limit()
+    del MA, Numeric
 __test__ = {}
 try:
     from numpy import array
