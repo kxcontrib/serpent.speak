@@ -7,7 +7,15 @@ class QDistribution(Distribution):
     def finalize_options(self):
         self.cmdclass['install_lib'] = qinstall_lib
         self.qhome = os.getenv('QHOME') or os.path.join(os.getenv('HOME'), 'q')
-        self.qarch = ('l32', 'l64')[sys.maxint > 2147483647]
+        u = os.uname()
+        if u[0] == 'Linux':
+            o = 'l'
+        elif u[0] == 'SunOS':
+            o = 'v' if u[-1] == 'i86pc' else 's'
+        else:
+            sys.stderr.write("Unknown platform: %s\n" % str(u))
+            sys.exit(1)
+        self.qarch = o+('32', '64')[sys.maxint > 2147483647]
         self.install_data = os.path.join(self.qhome, self.qarch)
         
 class QExtension(Extension):
@@ -44,7 +52,7 @@ modulepy = QExtension('py',
                       runtime_library_dirs = [python_lib_dir],
                       )
 
-modulepy = QExtension('p',
+modulep = QExtension('p',
                       sources=[ 'p.c',],
                       extra_compile_args = ['-g'],
                       runtime_library_dirs = [python_lib_dir],
@@ -52,6 +60,6 @@ modulepy = QExtension('p',
 
 setup(distclass=QDistribution,
       name='pyq',
-      ext_modules=[ module_k, modulepy,],
+      ext_modules=[ module_k, modulepy, modulep],
       py_modules=['q','qc'],
       )

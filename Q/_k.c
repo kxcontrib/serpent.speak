@@ -1591,17 +1591,18 @@ m2py(I d)
 static PyObject *
 z2py(F z)
 {
-	switch (isinf(z)) {
-	case -1: R PyDateTime_FromDateAndTime(1,1,1,0,0,0,0);
-	case 1: R PyDateTime_FromDateAndTime(9999,12,31,23,59,59,999999);
-	case 0: if (isnan(z)) Py_RETURN_NONE;
-	} 
-	K y=kz(z),x=a1(z2l,y);r0(y);
-	PyObject *o =  PyDateTime_FromDateAndTime(xI[0],xI[1],xI[2],
-						  xI[3],xI[4],xI[5],
-						  (I)round((z-floor(z))*24*60*60*1e6));
-	r0(x); R o;
+	if (finite(z)) {
+		K y=kz(z),x=a1(z2l,y);r0(y);
+		PyObject *o =  PyDateTime_FromDateAndTime(xI[0],xI[1],xI[2],
+							  xI[3],xI[4],xI[5],
+							  (I)round((z-floor(z))*24*60*60*1e6));
+		r0(x); R o;
+	}
+	if (isnan(z)) Py_RETURN_NONE;
+	R z<0?PyDateTime_FromDateAndTime(1,1,1,0,0,0,0)
+	     :PyDateTime_FromDateAndTime(9999,12,31,23,59,59,999999);
 }
+
 static PyObject *
 t2py(I t)
 {
