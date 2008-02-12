@@ -35,6 +35,7 @@ class qinstall_lib(install_lib):
             outfiles += [self.copy_file(os.path.join(self.build_dir, 'py.so'), qdst)[0]]
             outfiles += [self.copy_file(os.path.join(self.build_dir, 'p.so'), qdst)[0]]
             outfiles += [self.copy_file('p.k', dist.qhome)[0]]
+            outfiles += [self.copy_file('python.q', dist.qhome)[0]]
         else:
             self.warn("'%s' does not exist" % self.build_dir)
             return
