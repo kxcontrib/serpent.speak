@@ -60,8 +60,12 @@ Input/Output
 'xyz'
 >>> os.close(r); os.close(w)
 """
-__version__='$Revision: 1.30 $'
+__version__='$Revision: 1.35 $'
 __metaclass__ = type
+import sys
+if sys.executable.endswith('python'):
+    raise NotImplementedError("loading q in stock python is not implemented")
+del sys
 import _k
 from datetime import datetime, date, time
 kerr = _k.error
@@ -216,6 +220,9 @@ class K(_k.K):
     k('+`a`b!(1 2 3;10 20 30)')
 
     """
+    # Lighten the K objects by preventing the automatic creation of
+    # __dict__ and __weakref__ for each instance.
+    __slots__ = ()
     def __new__(self, x):
         tx = type(x)
         if tx is K:
