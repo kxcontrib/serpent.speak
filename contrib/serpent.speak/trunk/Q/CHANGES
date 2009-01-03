@@ -9,3 +9,11 @@ Implemented iterator protocol.
 2007-03-30
 
 implemented K._ja
+
+
+2009-01-02
+
+- Use k(0, ..) instead of dot() and aN() to improve compatibility
+- Default to python 2.6
+- Improvements to q script.p
+- NUC: extra info on q errors 

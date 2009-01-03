@@ -2,11 +2,11 @@
 #include "k.h"
 #include <dlfcn.h> 
 ZI (*run)(const char *command);
-ZV (*init)();ZK n;
+ZV (*init)(V);ZK n;
 Z K1(e){P(xt!=KC,krr("type"));
   P(run(xC),krr("python"));R r1(n);}
 K1(i){P(xt!=KC||xC[xn-1],krr("type"));
-  S er;void*h=dlopen("libpython2.5.so",RTLD_NOW|RTLD_GLOBAL);
+  S er;void*h=dlopen(xC,RTLD_NOW|RTLD_GLOBAL);
   er=dlerror();P(!h,krr(er));
   run=dlsym(h,"PyRun_SimpleString");P(er=dlerror(),krr(er));
   init=dlsym(h,"Py_Initialize");P(er=dlerror(),krr(er));

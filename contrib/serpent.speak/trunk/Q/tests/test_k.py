@@ -10,6 +10,7 @@ for m in ('func k knk ktd err'
     globals()[m] = getattr(_k.K, '_'+m)
 del m
 q = lambda *args: k(0,*args)
+q("\\e 0") # disable q's debug on error
 
 def kstr(x):
     return k(0, '-3!', x).inspect('s')
@@ -172,15 +173,15 @@ class CallsTestCase(unittest.TestCase):
         y = ki(-1)
         self.failUnless(eq(x, y))
 
-    def test_a2(self):
-        x = k(0, '+')._a2(ki(1), ki(2))
-        y = ki(3)
-        self.failUnless(eq(x, y))
+#     def test_a2(self):
+#         x = k(0, '+')._a2(ki(1), ki(2))
+#         y = ki(3)
+#         self.failUnless(eq(x, y))
 
-    def test_a3(self):
-        x = k(0, 'plist')._a3(ki(1), ki(2), ki(3))
-        y = I([1,2,3])
-        self.failUnless(eq(x, y))
+#     def test_a3(self):
+#         x = k(0, 'plist')._a3(ki(1), ki(2), ki(3))
+#         y = I([1,2,3])
+#         self.failUnless(eq(x, y))
 
 class StrTestCase(unittest.TestCase):
     def test_pass(self):
@@ -261,6 +262,14 @@ class JoinTestCase(unittest.TestCase):
         y = q('`a`b`c')
         self.failUnless(eq(x, y))
 
+class ErrorTestCase(unittest.TestCase):
+    def test_simple(self):
+        self.failUnlessRaises(_k.error, q, "1+`")
+        self.failUnlessRaises(_k.error, q("1+"), ks('')))
+        self.failUnlessRaises(_k.error, q("+"), ki(1), ks('')))
+
+    def test_nested(self):
+        self.failUnlessRaises(_k.error, q, "{{{'`xyz}0}0}", ki(0))
         
 if __name__ == '__main__':
     unittest.main()
