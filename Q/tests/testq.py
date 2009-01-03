@@ -20,9 +20,7 @@ class CallTestCase(unittest.TestCase):
         try:
             q("{f[x]}")(42)
         except kerr, e:
-            self.failUnlessEqual(str(e),
-                                 "('test', k('@'), k(\"({'`test};42)\"))")
-
+            self.failUnlessEqual(str(e), 'test')
         
 if __name__ == '__main__':
     unittest.main()

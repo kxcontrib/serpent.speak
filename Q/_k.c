@@ -91,10 +91,6 @@ PyDoc_STRVAR(module_doc,
 "t  4    00:00:00.000 time	                 \n"
 "*  4    `s$`         enum	                 \n"
 );
-/* q internals */
-extern void clr(void);
-extern char* es;
-extern K ex, ey;
 /* K objects */
 static K k_none;
 static PyObject *ErrorObject;
@@ -103,20 +99,6 @@ KObject_FromK(PyTypeObject *type, K x)
 {
 	if (!type) 
 		type = &K_Type;
-	if (!x) {
-		if (ex) {
-			PyObject *e = PyTuple_New(3);
-			PyTuple_SET_ITEM(e, 0, PyString_FromString(es));
-			PyTuple_SET_ITEM(e, 1, KObject_FromK(type, r1(ex)));
-			PyTuple_SET_ITEM(e, 2, KObject_FromK(type, r1(ey?ey:k_none)));
-			PyErr_SetObject(ErrorObject, e);
-		}
-		else
-			PyErr_SetString(ErrorObject, es);
-		
-		clr();
-		return NULL;
-	}
 	if (xt == -128)
 		return PyErr_Format(ErrorObject, xs?xs:(S)"not set"),r0(x),NULL;
 	KObject *self = (KObject*)type->tp_alloc(type, 0);
@@ -155,12 +137,12 @@ K_dot(KObject *self, PyObject *args)
 {
 	R K_Check(args)
 		? KObject_FromK(self->ob_type, 
-				dot(self->x, ((KObject*)args)->x))
+				k(0, ".", r1(self->x), r1(((KObject*)args)->x), (K)0))
 		: PyErr_Format(PyExc_TypeError, "expected a K object, not %s",
 			       args->ob_type->tp_name);
 }
 
-extern K a1(K,K);
+/* extern K a1(K,K); */
 static PyObject*
 K_a0(KObject *self)
 {
@@ -169,35 +151,15 @@ K_a0(KObject *self)
 		Py_INCREF(self);
 		return (PyObject*)self;
 	}
-	R KObject_FromK(self->ob_type, a1(x, k_none));
+	R KObject_FromK(self->ob_type, k(0, "@", r1(x), r1(k_none), (K)0));
 }
 static PyObject*
 K_a1(KObject *self, PyObject *arg)
 {
 	R K_Check(arg)
-		? KObject_FromK(self->ob_type, a1(self->x, ((KObject*)arg)->x))
+		? KObject_FromK(self->ob_type, k(0, "@", r1(self->x), r1(((KObject*)arg)->x), (K)0))
 		: PyErr_Format(PyExc_TypeError, "expected a K object, not %s",
 			       arg->ob_type->tp_name);
-}
-
-extern K a2(K,K,K);
-static PyObject*
-K_a2(KObject *self, PyObject *args)
-{
-	K x, y;
-	if (PyArg_ParseTuple(args, "O&O&", &getK, &x, &getK, &y))
-		R KObject_FromK(self->ob_type, a2(self->x, x, y));
-	return NULL;
-}
-
-extern K a3(K,K,K,K);
-static PyObject*
-K_a3(KObject *self, PyObject *args)
-{
-	K x, y, z;
-	if (PyArg_ParseTuple(args, "O&O&O&", &getK, &x, &getK, &y, &getK, &z))
-		R KObject_FromK(self->ob_type, a3(self->x, x, y, z));
-	return NULL;
 }
 
 static PyObject*
@@ -321,24 +283,23 @@ K_str(KObject *self)
 	case -KC:
 		return PyString_FromStringAndSize(&xg, 1);
 	}
-	x = a1(k_repr, x);
-	if (!x) {
-		PyErr_SetString(ErrorObject, es);
-		clr();
-		return NULL;
-	}
+	x = k(0, "@", r1(k_repr), r1(x), (K)0);
+	if (xt == -128)
+		return PyErr_Format(ErrorObject, xs?xs:(S)"not set"),r0(x),NULL;
 	return PyString_FromStringAndSize(xC, xn);
 }
 static PyObject*
 K_repr(KObject *self)
 {
-	K x;
+	K x = self->x;
 	PyObject *f, *s, *r;
-	x = a1(k_repr, self->x);
-	if (!x) {
-		clr();
-		return PyString_FromFormat("<k object at %p(%p)>", self, self->x);
+	x = k(0, "@", r1(k_repr), r1(x), (K)0);
+	if (xt == -128) {
+		r = PyString_FromFormat("<k object at %p of type %hd, '%s>", 
+					self->x, self->xt, xs);
+		r0(x); R r;
 	}
+
 	f = PyString_FromString("k(%r)");
 	if (f == NULL)
 		R NULL;
@@ -478,10 +439,6 @@ K_call_any(KObject *self, PyObject *args)
 		R K_a0(self);
 	case 1:
 		R K_a1(self, PyTuple_GET_ITEM(args, 0));
-	case 2:
-		R K_a2(self, args);
-	case 3:
-		R K_a3(self, args);
 	}
 	R K_dot(self, K_K(self->ob_type, args));
 }
@@ -1329,8 +1286,6 @@ K_methods[] = {
 	{"_dot", (PyCFunction)K_dot,  METH_O, "dot"},
 	{"_a0", (PyCFunction)K_a0,  METH_NOARGS, "a0"},
 	{"_a1", (PyCFunction)K_a1,  METH_O, "a1"},
-	{"_a2", (PyCFunction)K_a2,  METH_VARARGS, "a2"},
-	{"_a3", (PyCFunction)K_a3,  METH_VARARGS, "a3"},
 	{"_ja", (PyCFunction)K_ja,  METH_O, "append atom"},
 	{"_k",	(PyCFunction)K_k,  METH_VARARGS|METH_CLASS, K_k_doc},
 	{"_knk",(PyCFunction)K_knk, METH_VARARGS|METH_CLASS, K_knk_doc},
@@ -1563,6 +1518,8 @@ k_iter(KObject *obj)
 	PyObject_GC_Track(it);
 	return (PyObject *)it;
 }
+
+
 static K d2l, m2l, z2l, t2l, v2l, u2l;
 static PyObject *
 d2py(I d)
@@ -1572,7 +1529,7 @@ d2py(I d)
 	case wi: R PyDate_FromDate(9999,12,31);
 	case ni: Py_RETURN_NONE;
 	}
-	K y=kd(d),x=a1(d2l,y);r0(y);
+	K y=kd(d),x=k(0,"@",r1(d2l),y,(K)0);
 	PyObject *o = PyDate_FromDate(xI[0],xI[1],xI[2]);
 	r0(x); R o;
 }
@@ -1584,7 +1541,7 @@ m2py(I d)
 	case wi: R PyDate_FromDate(9999,12,1);
 	case ni: Py_RETURN_NONE;
 	}
-	K y=km(d),x=a1(m2l,y);r0(y);
+	K y=km(d),x=k(0,"@",r1(m2l),y,(K)0);
 	PyObject *o = PyDate_FromDate(xI[0],xI[1],1);
 	r0(x); R o;
 }
@@ -1592,7 +1549,7 @@ static PyObject *
 z2py(F z)
 {
 	if (finite(z)) {
-		K y=kz(z),x=a1(z2l,y);r0(y);
+		K y=kz(z),x=k(0,"@",r1(z2l),y,(K)0);
 		PyObject *o =  PyDateTime_FromDateAndTime(xI[0],xI[1],xI[2],
 							  xI[3],xI[4],xI[5],
 							  (I)round((z-floor(z))*24*60*60*1e6));
@@ -1607,7 +1564,7 @@ static PyObject *
 t2py(I t)
 {
 	if(t == ni) Py_RETURN_NONE;
-	K y=kt(t),x=a1(t2l,y);r0(y);
+	K y=kt(t),x=k(0,"@",r1(t2l),y,(K)0);
 	PyObject *o = PyTime_FromTime(xI[0],xI[1],xI[2],
 				       t%1000*1000);
 	r0(x); R o;
@@ -1616,7 +1573,7 @@ static PyObject *
 v2py(I t)
 {
 	if(t == ni) Py_RETURN_NONE;
-	K y=kv(t),x=a1(v2l,y);r0(y);
+	K y=kv(t),x=k(0,"@",r1(v2l),y,(K)0);
 	PyObject *o = PyTime_FromTime(xI[0],xI[1],xI[2],0);
 	r0(x); R o;
 }
@@ -1624,7 +1581,7 @@ static PyObject *
 u2py(I t)
 {
 	if(t == ni) Py_RETURN_NONE;
-	K y=ku(t),x=a1(u2l,y);r0(y);
+	K y=ku(t),x=k(0, "@",r1(u2l),y,(K)0);
 	PyObject *o = PyTime_FromTime(xI[0],xI[1],0,0);
 	r0(x); R o;
 }
@@ -1633,7 +1590,7 @@ static PyObject *
 kiter_next(kiterobject *it)
 {
 	PyObject *ret = NULL;
-	K x = it->x, y;
+	K x = it->x;
 	I i = it->i, n = it->n;
 	if (i < n)
 		switch (xt) {
@@ -1688,8 +1645,7 @@ kiter_next(kiterobject *it)
 			ret = PyFloat_FromDouble(xF[i]);
 			break;
 		case XT:
-			ret = KObject_FromK(it->ktype,a1(x,y=ki(i)));
-			r0(y);
+			ret = KObject_FromK(it->ktype,k(0,"@",r1(x),ki(i),(K)0));
 			break;
 		}
 	it->i++;
@@ -1800,7 +1756,6 @@ init_k(void)
 	PyModule_AddStringConstant(m, "__version__", __version__);
 	k3io_init();
 }
-
 
 /* k3io - read and write kdb tables */
 /* could be implemented as a loadable q module, but keeping it here
@@ -2028,8 +1983,7 @@ k3io_read_splayed(K x)
 		fclose(g);
 		next_object(f);
 		d = read_attrs(f);
-		kK(xy)[i] = a2(k3_convert, v, d);
-		r0(v); r0(d);
+		kK(xy)[i] = k(0, "{z[y;z]}", r1(k3_convert), v, d, (K)0);
 	}
 	x = xT(x);
  end:
@@ -2151,7 +2105,7 @@ k3convert(K x, S* type)
 		R r;
 	}
 	*type = k3T[xt];
-	r = a1(k3c[xt], x);
+	r = k(0, "@", r1(k3c[xt]), r1(x), (K)0);
 	R r;
 }
 
