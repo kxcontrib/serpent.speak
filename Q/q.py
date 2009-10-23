@@ -597,6 +597,7 @@ kp = K._kp
 
 converters = {
     K: lambda x: x,
+    type(None): lambda x: K._k(0, "::"),
     bool: K._kb,
     int: inttok,
     long: inttok,
