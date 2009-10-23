@@ -731,6 +731,50 @@ K_kzz(PyTypeObject *type, PyObject *arg)
 	return KObject_FromK(type, x);
 }
 
+#ifdef KN
+PyDoc_STRVAR(K_knz_doc,
+	     "converts datetime.datetime to q timespan");
+static PyObject *
+K_knz(PyTypeObject *type, PyObject *arg)
+{
+	if (!PyDelta_Check(arg))
+		return PyErr_Format(PyExc_TypeError, "expected a timedelta object, not %s",
+				    arg->ob_type->tp_name);
+	int d, s, u;
+	d = ((PyDateTime_Delta*)arg)->days;
+	s = ((PyDateTime_Delta*)arg)->seconds;
+	u = ((PyDateTime_Delta*)arg)->microseconds;
+	K x = ktj(-KN, 1000000000ll*(d*24*60*60+s)+1000l*u);
+	if (!type) {
+		type = &K_Type;
+	}
+	return KObject_FromK(type, x);
+}
+
+PyDoc_STRVAR(K_kpz_doc,
+	     "converts datetime.timedelta to q timespan");
+static PyObject *
+K_kpz(PyTypeObject *type, PyObject *arg)
+{
+	if (!PyDateTime_Check(arg))
+		return PyErr_Format(PyExc_TypeError, "expected a date object, not %s",
+				    arg->ob_type->tp_name);
+	int y, m, d, h, u, s, i;
+	y = PyDateTime_GET_YEAR(arg);
+	m = PyDateTime_GET_MONTH(arg);
+	d = PyDateTime_GET_DAY(arg);
+	h = PyDateTime_DATE_GET_HOUR(arg);
+	u = PyDateTime_DATE_GET_MINUTE(arg);
+	s = PyDateTime_DATE_GET_SECOND(arg);
+	i = PyDateTime_DATE_GET_MICROSECOND(arg);
+	K x = ktj(-KP, 1000000000ll*(((ymd(y,m,d)*24+h)*60+u)*60+s)
+		  + 1000l*i);
+	if (!type) {
+		type = &K_Type;
+	}
+	return KObject_FromK(type, x);
+}
+#endif
 PyDoc_STRVAR(K_S_doc,
 	     "returns a K symbol list");
 static PyObject *
@@ -1309,6 +1353,10 @@ K_methods[] = {
 	{"_kdd",(PyCFunction)K_kdd, METH_O|METH_CLASS, K_kdd_doc},
 	{"_kz",	(PyCFunction)K_kz, METH_VARARGS|METH_CLASS, K_kz_doc},
 	{"_kzz",(PyCFunction)K_kzz, METH_O|METH_CLASS, K_kzz_doc},
+#ifdef KN
+	{"_knz",(PyCFunction)K_knz, METH_O|METH_CLASS, K_knz_doc},
+	{"_kpz",(PyCFunction)K_kpz, METH_O|METH_CLASS, K_kpz_doc},
+#endif
 	{"_ku",	(PyCFunction)K_ku, METH_VARARGS|METH_CLASS, K_ku_doc},
 	{"_kv",	(PyCFunction)K_kv, METH_VARARGS|METH_CLASS, K_kv_doc},
 	{"_kt",	(PyCFunction)K_kt, METH_VARARGS|METH_CLASS, K_kt_doc},

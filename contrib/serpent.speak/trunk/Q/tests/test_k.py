@@ -1,11 +1,11 @@
 import unittest
 import _k
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 # extract _k.K class methods
 
 for m in ('func k knk ktd err'
           ' ka kb kg kh ki kj ke kf kc ks km kd kz ku kv kt kp'
-          ' kdd ktt kzz'
+          ' kdd ktt kzz knz kpz'
           ' I F S K xT xD').split():
     globals()[m] = getattr(_k.K, '_'+m)
 del m
@@ -51,6 +51,10 @@ class AtomTestCase(unittest.TestCase):
         self.failUnless(eq(ktt(time(10,11,12,1000)), k(0, '10:11:12.001')))
     def test_kzz(self):
         self.failUnless(eq(kzz(datetime(2000,1,2,10,11,12,1000)), k(0, '2000.01.02T10:11:12.001')))
+    def test_kpz(self):
+        self.failUnless(eq(kpz(datetime(2000,1,2,10,11,12,1000)), k(0, '2000.01.02D10:11:12.001000000')))
+    def test_knz(self):
+        self.failUnless(eq(knz(timedelta(100,20,1000)), k(0, '100D00:00:20.001000000')))
     def test_kz(self):
         self.failUnless(eq(kz(1.5), k(0, '2000.01.02T12:00:00.000')))
     def test_ku(self):
@@ -163,10 +167,10 @@ class CallsTestCase(unittest.TestCase):
         y = ki(3)
         self.failUnless(eq(x, y))
 
-    def test_a0(self):
-        x = k(0, '{1}')._a0()
-        y = ki(1)
-        self.failUnless(eq(x, y))
+#     def test_a0(self):
+#         x = k(0, '{1}')._a0()
+#         y = ki(1)
+#         self.failUnless(eq(x, y))
 
     def test_a1(self):
         x = k(0, 'neg')._a1(ki(1))
@@ -265,8 +269,8 @@ class JoinTestCase(unittest.TestCase):
 class ErrorTestCase(unittest.TestCase):
     def test_simple(self):
         self.failUnlessRaises(_k.error, q, "1+`")
-        self.failUnlessRaises(_k.error, q("1+"), ks('')))
-        self.failUnlessRaises(_k.error, q("+"), ki(1), ks('')))
+        self.failUnlessRaises(_k.error, q("1+"), ks(''))
+        self.failUnlessRaises(_k.error, q("+"), ki(1), ks(''))
 
     def test_nested(self):
         self.failUnlessRaises(_k.error, q, "{{{'`xyz}0}0}", ki(0))

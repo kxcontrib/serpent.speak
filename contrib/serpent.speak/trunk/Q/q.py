@@ -50,6 +50,8 @@ Temporal Primitives
 k('2004.07.03T16:35:24.980')
 >>> K(x.date()), K(x.time())
 (k('2004.07.03'), k('16:35:24.980'))
+>>> K(timedelta(200,200,200))
+k('200D00:03:20.000200000')
 
 Input/Output
 
@@ -67,7 +69,7 @@ if sys.executable.endswith('python'):
     raise NotImplementedError("loading q in stock python is not implemented")
 del sys
 import _k
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 kerr = _k.error
 class K_call_proxy:
     def __get__(self, obj, objtype):
@@ -611,6 +613,10 @@ converters = {
     type(lambda:0): K._func,
     buffer: K._kp
     }
+try:
+    converters[timedelta] = K._knz
+except AttributeError:
+    pass
 
 try:
     import MA, Numeric
