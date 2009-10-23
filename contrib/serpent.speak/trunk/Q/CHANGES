@@ -17,3 +17,8 @@ implemented K._ja
 - Default to python 2.6
 - Improvements to q script.p
 - NUC: extra info on q errors 
+
+2009-10-23
+
+NUC: k3io
+K(None) => k("::")
