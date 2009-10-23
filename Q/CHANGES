@@ -22,5 +22,5 @@ implemented K._ja
 
 NUC: k3i
 K(None) => k("::")
-K(timedelta) => timestamp
+K(timedelta) => timespan
 
