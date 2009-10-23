@@ -20,5 +20,7 @@ implemented K._ja
 
 2009-10-23
 
-NUC: k3io
+NUC: k3i
 K(None) => k("::")
+K(timedelta) => timestamp
+
