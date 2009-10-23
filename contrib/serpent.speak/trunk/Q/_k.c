@@ -1708,7 +1708,16 @@ init_k(void)
 {
 	PyObject *m;
 	/* PyObject* c_api_object; */
-
+	PyDateTime_IMPORT;
+	/* date/time to list translations */
+	d2l=k(0,"`year`mm`dd$\\:",(K)0);
+	m2l=k(0,"`year`mm$\\:",(K)0);
+	z2l=k(0,"`year`mm`dd`hh`uu`ss$\\:",(K)0); 
+	t2l=k(0,"`hh`mm`ss$\\:",(K)0);
+	v2l=k(0,"`hh`mm`ss$\\:",(K)0);
+	u2l=k(0,"`hh`mm$\\:",(K)0);
+	k_none = k(0, "::", (K)0);
+	k_repr = k(0, "-3!", (K)0);
 	/* Finalize the type object including setting type of the new type
 	 * object; doing it here is required for portability to Windows
 	 * without requiring C++. */
