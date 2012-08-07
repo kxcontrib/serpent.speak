@@ -1,0 +1,13 @@
+For installation instructions see INSTALL.
+
+Usage:
+  q python.q [-<python option>@ <python option value>]* python-script
+
+Documentation:
+  q python.q -m@ pydoc q
+
+Test:
+  q python.q -m@ q
+
+Note that python options should be followed by '@' in order to prevent
+q from taking over.
