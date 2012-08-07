@@ -61,6 +61,10 @@ modulep = QExtension('p',
 
 setup(distclass=QDistribution,
       name='pyq',
+      version='3.0.1',
+      url='http://code.kx.com/wiki/Contrib/PyQ',
+      author='The Parseltongue Project',
+      author_email='serpent.speak@gmail.com',
       ext_modules=[ module_k, modulepy, modulep],
       py_modules=['q','qc'],
       )
