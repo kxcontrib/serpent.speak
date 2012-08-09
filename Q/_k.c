@@ -1202,6 +1202,10 @@ K_k(PyTypeObject *type, PyObject *args)
 		PyErr_BadArgument();
 		return NULL;
 	}
+	if (r == NULL) {
+		PyErr_SetString(PyExc_OSError, "connection");
+		return NULL;
+	}
 	return KObject_FromK(type, r);
 }
 
@@ -1488,7 +1492,7 @@ static PyTypeObject K_Type = {
 };
 /* --------------------------------------------------------------------- */
 
-
+#if 0
 PyDoc_STRVAR(_k_khp_doc,
 	     "khp(host,port) -> connection handle\n"
 	     "\n"
@@ -1503,7 +1507,7 @@ _k_khp(PyObject *self, PyObject *args)
 		return NULL;
 	return PyInt_FromLong(khp(h, p));
 }
-
+#endif
 PyDoc_STRVAR(_k_ymd_doc,
 	     "ymd(y,m,d) -> q date\n"
 	     "\n"
@@ -1523,7 +1527,7 @@ _k_ymd(PyObject *self, PyObject *args)
 /* List of functions defined in the module */
 
 static PyMethodDef _k_methods[] = {
-	{"khp",		_k_khp,		METH_VARARGS, _k_khp_doc},
+//	{"khp",		_k_khp,		METH_VARARGS, _k_khp_doc},
 	{"ymd",		_k_ymd,		METH_VARARGS, _k_ymd_doc},
 	{NULL,		NULL}		/* sentinel */
 };

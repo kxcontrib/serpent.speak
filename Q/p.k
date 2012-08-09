@@ -1,5 +1,5 @@
 \d .p
-@[`p 2:(`i;1);"libpython2.6.so\000"]
+@[`p 2:(`i;1);"libpython2.7.so\000"]
 e:{e0 x,"\000";}
 \d .
 p)import sys, os; sys.executable = 'q'
