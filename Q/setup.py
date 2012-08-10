@@ -157,7 +157,8 @@ class build_qk(Command):
                         lineno == rlineno) and line.startswith(start):
                         adjust[lineno] = adjusted
         if adjust:
-            with open(infile) as source, open(outfile, 'w') as target:
+            with open(infile) as source: 
+              with open(outfile, 'w') as target:
                 for lineno, line in enumerate(source):
                     a = adjust.get(lineno)
                     if a is sentinel:
