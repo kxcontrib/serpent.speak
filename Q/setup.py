@@ -8,7 +8,7 @@ and Q objects live in the same memory space and share the same data.
 ###############################################################################
 metadata = dict(
     name='pyq',
-    version='3.0.1',
+    version='3.1.0',
     url='http://code.kx.com/wiki/Contrib/PyQ',
     author='The Parseltongue Project',
     author_email='serpent.speak@gmail.com',
