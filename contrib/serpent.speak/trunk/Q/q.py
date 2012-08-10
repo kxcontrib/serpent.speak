@@ -68,7 +68,11 @@ import sys
 if sys.executable.endswith('python'):
     raise NotImplementedError("loading q in stock python is not implemented")
 del sys
-import _k
+import os
+# If QVER environment variable is set - append the first digit to the
+# _k extension module name.
+_k = __import__('_k' + os.environ.get('QVER', [''])[0])
+del os
 from datetime import datetime, date, time, timedelta
 kerr = _k.error
 class K_call_proxy:

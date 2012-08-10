@@ -4,39 +4,34 @@
 #include <string.h>
 #include <dlfcn.h>
 static int (*Py_Main)(int argc, char **argv);
-K py(K x)
+K py(K f, K x, K lib)
 {
 	char *error;
 	void *h;
 	K r;
-	h = dlopen("libpython2.7.so", RTLD_NOW|RTLD_GLOBAL);
+	h = dlopen((const char *)kG(lib), RTLD_NOW|RTLD_GLOBAL);
 	if (!h)
-		return krr(dlerror());
+		R krr(dlerror());
 	dlerror();    /* Clear any existing error */
 	Py_Main = dlsym(h, "Py_Main");
-	if ((error = dlerror()))
-		return krr(dlerror());
-	if (x->t) {
-		R krr("type");
-	}
-	I const n = x->n;
-        I m = 0;
-	DO(n, K y; if ((y = kK(x)[i])->t != KC) R krr("atype");
-	   m += y->n + 1);
-	char** const argv = malloc(sizeof(char*) * n);
-	if (!argv) {
-		R krr("memory");
-	}
+	P((error = dlerror()),krr(dlerror()));
+	P(xt, krr("argv type"));
+        I m = 0;     /* buf length */
+	DO(xn,
+	   K y;
+	   P((y = kK(x)[i])->t!=KC, krr("arg type"));
+	   m += y->n+1);
+	char** const argv = malloc(sizeof(char*) * (xn+1));
+	P(!argv, krr("memory"));
         char* const buf = malloc(m);
-	if (!buf) {
-		free(argv);
-		R krr("memory");
-	}
+	P(!buf,(free(argv),krr("memory")));
+	argv[0] = f->s;
 	char* p = buf;
-	DO(n, K y = kK(x)[i]; 
-	   argv[i] = memcpy(p, kG(y), y->n);
+	DO(xn,
+	   K y = kK(x)[i]; 
+	   argv[i+1] = memcpy(p, kG(y), y->n);
 	   p += y->n; *p++ = '\0');
-	r = ki(Py_Main(n, argv));
+	r = ki(Py_Main(xn+1, argv));
 	dlclose(h);
 	free(argv);
 	free(buf);

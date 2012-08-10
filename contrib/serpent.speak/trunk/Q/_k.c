@@ -29,7 +29,7 @@ static char __version__[] = "$Revision: 1.49 $";
 #include "math.h"
 /* these should be in k.h */
 ZK km(I i){K x = ka(-KM);xi=i;R x;}
-ZK ku(I i){K x = ka(-KU);xi=i;R x;}
+ZK kuu(I i){K x = ka(-KU);xi=i;R x;}
 ZK kv(I i){K x = ka(-KV);xi=i;R x;}
 #include <stdlib.h>
 typedef struct {
@@ -100,7 +100,7 @@ KObject_FromK(PyTypeObject *type, K x)
 	if (!type) 
 		type = &K_Type;
 	if (xt == -128)
-		return PyErr_Format(ErrorObject, xs?xs:(S)"not set"),r0(x),NULL;
+		return PyErr_SetString(ErrorObject, xs?xs:(S)"not set"),r0(x),NULL;
 	KObject *self = (KObject*)type->tp_alloc(type, 0);
 	if (self)
 		self->x = x;
@@ -285,7 +285,7 @@ K_str(KObject *self)
 	}
 	x = k(0, "@", r1(k_repr), r1(x), (K)0);
 	if (xt == -128)
-		return PyErr_Format(ErrorObject, xs?xs:(S)"not set"),r0(x),NULL;
+		return PyErr_SetString(ErrorObject, xs?xs:(S)"not set"),r0(x),NULL;
 	return PyString_FromStringAndSize((S)xC, xn);
 }
 static PyObject*
@@ -800,7 +800,7 @@ K_S(PyTypeObject *type, PyObject *arg)
 K_ATOM(m, I, i, "returns a K month")
 K_ATOM(d, I, i, "returns a K date")
 K_ATOM(z, F, d, "returns a K datetime")
-K_ATOM(u, I, i, "returns a K minute")
+K_ATOM(uu, I, i, "returns a K minute")
 K_ATOM(v, I, i, "returns a K second")
 K_ATOM(t, I, i, "returns a K time")
 PyDoc_STRVAR(K_kp_doc,
@@ -1361,7 +1361,7 @@ K_methods[] = {
 	{"_knz",(PyCFunction)K_knz, METH_O|METH_CLASS, K_knz_doc},
 	{"_kpz",(PyCFunction)K_kpz, METH_O|METH_CLASS, K_kpz_doc},
 #endif
-	{"_ku",	(PyCFunction)K_ku, METH_VARARGS|METH_CLASS, K_ku_doc},
+	{"_ku",	(PyCFunction)K_kuu, METH_VARARGS|METH_CLASS, K_kuu_doc},
 	{"_kv",	(PyCFunction)K_kv, METH_VARARGS|METH_CLASS, K_kv_doc},
 	{"_kt",	(PyCFunction)K_kt, METH_VARARGS|METH_CLASS, K_kt_doc},
 	{"_ktt",(PyCFunction)K_ktt, METH_O|METH_CLASS, K_ktt_doc},
@@ -1508,6 +1508,7 @@ _k_khp(PyObject *self, PyObject *args)
 	return PyInt_FromLong(khp(h, p));
 }
 #endif
+
 PyDoc_STRVAR(_k_ymd_doc,
 	     "ymd(y,m,d) -> q date\n"
 	     "\n"
@@ -1633,7 +1634,7 @@ static PyObject *
 u2py(I t)
 {
 	if(t == ni) Py_RETURN_NONE;
-	K y=ku(t),x=k(0, "@",r1(u2l),y,(K)0);
+	K y=kuu(t),x=k(0, "@",r1(u2l),y,(K)0);
 	PyObject *o = PyTime_FromTime(xI[0],xI[1],0,0);
 	r0(x); R o;
 }
@@ -1754,9 +1755,13 @@ static PyTypeObject KObjectIter_Type = {
 	0,					/* tp_methods */
 };
 
-/* Initialization function for the module (*must* be called init_k) */
+/* Initialization function for the module (*must* be called init_k + KXVER) */
+#define CAT(x, y) x##y
+#define XCAT(x, y) CAT(x, y)
+#define SCAT(x, y) (x #y)
+#define XSCAT(x, y) SCAT(x, y)
 PyMODINIT_FUNC
-init_k(void)
+XCAT(init_k, KXVER)(void)
 {
 	PyObject *m;
 	/* PyObject* c_api_object; */
@@ -1777,7 +1782,7 @@ init_k(void)
 		return;
 
 	/* Create the module and add the functions */
-	m = Py_InitModule3("_k", _k_methods, module_doc);
+	m = Py_InitModule3(XSCAT("_k", KXVER), _k_methods, module_doc);
 	if (!m)
 		return;
 	/* Add some symbolic constants to the module */
