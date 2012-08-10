@@ -1,5 +1,5 @@
 import unittest
-import _k
+from q import _k
 from datetime import datetime, date, time, timedelta
 # extract _k.K class methods
 
@@ -11,7 +11,7 @@ for m in ('func k knk ktd err'
 del m
 q = lambda *args: k(0,*args)
 q("\\e 0") # disable q's debug on error
-
+KXVER=int(q('.Q.k').inspect('f'))
 def kstr(x):
     return k(0, '-3!', x).inspect('s')
 
@@ -29,7 +29,7 @@ class AtomTestCase(unittest.TestCase):
     def test_kh(self):
         self.failUnless(eq(kh(1), k(0, '1h')))
     def test_ki(self):
-        self.failUnless(eq(ki(1), k(0, '1')))
+        self.failUnless(eq(ki(1), k(0, '1i')))
     def test_kj(self):
         self.failUnless(eq(kj(1), k(0, '1j')))
         self.failUnless(eq(kj(9223372036854775806), k(0, '9223372036854775806j')))
@@ -69,7 +69,7 @@ class ListTestCase(unittest.TestCase):
         self.failUnless(eq(kp("abc"), k(0, '"abc"')))
     def test_I(self):
         self.failUnless(eq(I([]), k(0, '`int$()')))
-        self.failUnless(eq(I([1,2]), k(0, '1 2')))
+        self.failUnless(eq(I([1,2]), k(0, '1 2i')))
     def test_F(self):
         self.failUnless(eq(F([]), k(0, '`float$()')))
         self.failUnless(eq(F([1., 2.]), k(0, '1 2f')))
@@ -78,18 +78,18 @@ class ListTestCase(unittest.TestCase):
         self.failUnless(eq(S(['aa', 'bb']), k(0, '`aa`bb')))
     def test_K(self):
         self.failUnless(eq(K([]), k(0, '()')))
-        self.failUnless(eq(K([ki(0), kf(1)]), k(0, '(0;1f)')))
+        self.failUnless(eq(K([ki(0), kf(1)]), k(0, '(0i;1f)')))
 
 class TableDictTestCase(unittest.TestCase):
     def test_xD(self):
-        self.failUnless(eq(xD(S('abc'), I(range(3))), k(0, '`a`b`c!0 1 2')))
+        self.failUnless(eq(xD(S('abc'), I(range(3))), k(0, '`a`b`c!0 1 2i')))
 
     def test_xT(self):
         a = S('XYZ')
         b = kp('xyz')
         c = I([1,2,3])
         self.failUnless(eq(xT(xD(S('abc'), K([a,b,c]))),
-                           k(0, '([]a:`X`Y`Z;b:"xyz";c:1 2 3)')))
+                           k(0, '([]a:`X`Y`Z;b:"xyz";c:1 2 3i)')))
     def test_ktd(self):
         x = k(0, '([a:1 2 3]b:10 20 30)')
         y = k(0, '([]a:1 2 3;b:10 20 30)')
@@ -198,8 +198,12 @@ class StrTestCase(unittest.TestCase):
     def test_misc(self):
         self.failUnlessEqual(str(kb(1)), '1b')
         self.failUnlessEqual(str(kh(1)), '1h')
-        self.failUnlessEqual(str(ki(1)), '1')
-        self.failUnlessEqual(str(kj(1)), '1j')
+        if KXVER >= 3:
+            self.failUnlessEqual(str(ki(1)), '1i')
+            self.failUnlessEqual(str(kj(1)), '1')
+        else:
+            self.failUnlessEqual(str(ki(1)), '1')
+            self.failUnlessEqual(str(kj(1)), '1j')
         self.failUnlessEqual(str(kf(1)), '1f')
         
 class ReprTestCase(unittest.TestCase):
@@ -213,8 +217,12 @@ class ReprTestCase(unittest.TestCase):
     def test_misc(self):
         self.failUnlessEqual(repr(kb(1)), "k('1b')")
         self.failUnlessEqual(repr(kh(1)), "k('1h')")
-        self.failUnlessEqual(repr(ki(1)), "k('1')")
-        self.failUnlessEqual(repr(kj(1)), "k('1j')")
+        if KXVER >= 3:
+            self.failUnlessEqual(repr(ki(1)), "k('1i')")
+            self.failUnlessEqual(repr(kj(1)), "k('1')")
+        else:
+            self.failUnlessEqual(repr(ki(1)), "k('1')")
+            self.failUnlessEqual(repr(kj(1)), "k('1j')")
         self.failUnlessEqual(repr(kf(1)), "k('1f')")
         
 class JoinTestCase(unittest.TestCase):

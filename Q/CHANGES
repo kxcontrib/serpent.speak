@@ -24,3 +24,8 @@ NUC: k3i
 K(None) => k("::")
 K(timedelta) => timespan
 
+2012-08-09
+
+- support both q 2.x and 3.x
+- better setup.py
+- release pyq-3.0.1 as a source archive
