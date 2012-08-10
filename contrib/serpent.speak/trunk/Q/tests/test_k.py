@@ -12,6 +12,10 @@ del m
 q = lambda *args: k(0,*args)
 q("\\e 0") # disable q's debug on error
 KXVER=int(q('.Q.k').inspect('f'))
+if KXVER >= 3:
+    kguid = _k.K._kguid
+
+
 def kstr(x):
     return k(0, '-3!', x).inspect('s')
 
@@ -160,6 +164,13 @@ class IterTestCase(unittest.TestCase):
              k(0, '`a`b`c!(`Z;"z";3)'),]
         for x,y in zip(t, d):
             self.failUnless(eq(x,y))
+
+    if KXVER >= 3:
+        def test_guid(self):
+            s = '0x16151413121110090807060504030201'
+            l = long(s, 16)
+            self.assertTrue(eq(kguid(l), k(0, '0x0 sv ' + s)))
+            self.assertEqual([l], list(k(0, 'enlist 0x0 sv ' + s)))
 
 class CallsTestCase(unittest.TestCase):
     def test_dot(self):
