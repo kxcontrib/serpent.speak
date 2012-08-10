@@ -8,7 +8,7 @@ python.
 Prerequisites:
 
 1. Q (http://kxdownloads.com)
-2. libpython2.7
+2. libpython2.x (tested with 2.6 and 2.7)
 3. GNU make, gcc
 
 On a linux system, running "python setup.py install" will install
