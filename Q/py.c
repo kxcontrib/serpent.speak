@@ -14,7 +14,7 @@ K py(K f, K x, K lib)
 		R krr(dlerror());
 	dlerror();    /* Clear any existing error */
 	Py_Main = dlsym(h, "Py_Main");
-	P((error = dlerror()),krr(dlerror()));
+	P((error = dlerror()),krr(error));
 	P(xt, krr("argv type"));
         I m = 0;     /* buf length */
 	DO(xn,

@@ -29,3 +29,7 @@ K(timedelta) => timespan
 - support both q 2.x and 3.x
 - better setup.py
 - release pyq-3.0.1 as a source archive
+
+2012-08-10
+
+- basic guid support

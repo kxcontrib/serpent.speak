@@ -25,8 +25,11 @@ static char __version__[] = "$Revision: 1.49 $";
 */
 #include "Python.h"
 #include "datetime.h"
+#include "longintrepr.h"
+
 #include "k.h"
 #include "math.h"
+
 /* these should be in k.h */
 ZK km(I i){K x = ka(-KM);xi=i;R x;}
 ZK kuu(I i){K x = ka(-KU);xi=i;R x;}
@@ -100,7 +103,8 @@ KObject_FromK(PyTypeObject *type, K x)
 	if (!type) 
 		type = &K_Type;
 	if (xt == -128)
-		return PyErr_SetString(ErrorObject, xs?xs:(S)"not set"),r0(x),NULL;
+		return PyErr_SetString(ErrorObject,
+				       xs?xs:(S)"not set"),r0(x),NULL;
 	KObject *self = (KObject*)type->tp_alloc(type, 0);
 	if (self)
 		self->x = x;
@@ -347,7 +351,12 @@ k_itemsize(K x)
 	static int itemsizes[] = {
 		sizeof(void*),
 		1, /* bool */
-		0, 0, 1, /* byte */
+#if KXVER>=0
+		16,
+#else
+		0,
+#endif
+		0, 1, /* byte */
 		2, /* short */
 		4, /* int */
 		8, /* long */
@@ -820,6 +829,25 @@ K_kp(PyTypeObject *type, PyObject *args)
 	return KObject_FromK(type, x);
 }
 
+#if KXVER>=3
+PyDoc_STRVAR(K_kguid_doc,
+             "returns a K guid");
+static PyObject *
+K_kguid(PyTypeObject *type, PyObject *args)
+{
+	U u;
+	PyLongObject *pylong;
+	if (!PyArg_ParseTuple(args, "O!:K._kguid", &PyLong_Type, &pylong))
+		return NULL;
+	if (_PyLong_AsByteArray(pylong, u.g, 16, 0, 0) == -1)
+		return NULL;
+	if (!type)
+		type = &K_Type;
+	return KObject_FromK(type, ku(u));
+}
+#endif
+
+
 PyDoc_STRVAR(K_K_doc,
 	     "returns a K general list");
 static PyObject *
@@ -1230,10 +1258,16 @@ K_inspect(PyObject *self, PyObject *args)
 			      &c, &i))
 		return NULL;
 	switch (c) {
+#if KXVER >=3
+	case 'm': return PyInt_FromLong(k->m);
+	case 'a': return PyInt_FromLong(k->a);
+	case 'n': return PyInt_FromSsize_t(k->n);
+#else
+	case 'n': return PyInt_FromLong(k->n);
+#endif
 	case 'r': return PyInt_FromLong(k->r);
 	case 't': return PyInt_FromLong(k->t);
 	case 'u': return PyInt_FromLong(k->u);
-	case 'n': return PyInt_FromLong(k->n);
 		/* atoms */
 	case 'g': return PyInt_FromLong(k->g);
 	case 'h': return PyInt_FromLong(k->h);
@@ -1361,7 +1395,10 @@ K_methods[] = {
 	{"_knz",(PyCFunction)K_knz, METH_O|METH_CLASS, K_knz_doc},
 	{"_kpz",(PyCFunction)K_kpz, METH_O|METH_CLASS, K_kpz_doc},
 #endif
-	{"_ku",	(PyCFunction)K_kuu, METH_VARARGS|METH_CLASS, K_kuu_doc},
+	{"_ku", (PyCFunction)K_kuu, METH_VARARGS|METH_CLASS, K_kuu_doc},
+#if KXVER>=3
+	{"_kguid",(PyCFunction)K_kguid, METH_VARARGS|METH_CLASS, K_kguid_doc},
+#endif
 	{"_kv",	(PyCFunction)K_kv, METH_VARARGS|METH_CLASS, K_kv_doc},
 	{"_kt",	(PyCFunction)K_kt, METH_VARARGS|METH_CLASS, K_kt_doc},
 	{"_ktt",(PyCFunction)K_ktt, METH_O|METH_CLASS, K_ktt_doc},
@@ -1653,6 +1690,11 @@ kiter_next(kiterobject *it)
 		case 0:
 			ret = KObject_FromK(it->ktype, r1(xK[i]));
 			break;
+#if KXVER>=3
+		case UU:
+			ret = _PyLong_FromByteArray(xU[i].g, 16, 0, 0);
+			break;
+#endif
 		/* remaining cases are less common because array(x) *
 		 * is a better option that list(x)                  */
 		case KB:
