@@ -606,6 +606,7 @@ PyDoc_STRVAR(K_I_doc,
 static PyObject *
 K_I(PyTypeObject *type, PyObject *arg)
 {
+	PyObject *ret = NULL;
 	long item;
 	PyObject *seq = PySequence_Fast(arg, "K._I: not a sequence");
 	if (seq == NULL)
@@ -623,18 +624,21 @@ K_I(PyTypeObject *type, PyObject *arg)
 				r0(x);
 				PyErr_Format(PyExc_TypeError,
 					     "K._I: %d-%s item is not an int", i+1, th(i+1));
-				return NULL;
+				goto error;
 			}
 		}
 		if (sizeof(I) != sizeof(long) && item != (I)item) {
 			r0(x);
 			PyErr_Format(PyExc_TypeError,
 				     "K._I: %d-%s item (%ld) is too big", i+1, th(i+1), item);
-			return NULL;
+			goto error;
 		}
 		xI[i] = (I)item;
 	}
-	return KObject_FromK(type, x);
+	ret = KObject_FromK(type, x);
+ error:
+	Py_DECREF(seq);
+	return ret;
 }
 K_ATOM(j, J, L, "returns a K long (64 bits)")
 K_ATOM(e, E, f, "returns a K real (32 bits)")
@@ -652,13 +656,14 @@ K_F(PyTypeObject *type, PyObject *arg)
 	for (i = 0; i < n; ++i) {
 		PyObject *o = PySequence_Fast_GET_ITEM(seq, i);
 		if (!PyFloat_Check(o)) {
-			r0(x);
+			r0(x); Py_DECREF(seq);
 			PyErr_Format(PyExc_TypeError,
 				     "K._F: %d-%s item is not an int", i+1, th(i+1));
 			return NULL;
 		}
 		xF[i] = PyFloat_AS_DOUBLE(o);
 	}
+	Py_DECREF(seq);
 	return KObject_FromK(type, x);
 }
 K_ATOM(c, G, c,	"returns a K char")
@@ -797,13 +802,14 @@ K_S(PyTypeObject *type, PyObject *arg)
 	for (i = 0; i < n; ++i) {
 		PyObject *o = PySequence_Fast_GET_ITEM(seq, i);
 		if (!PyString_Check(o)) {
-			r0(x);
+			r0(x);Py_DECREF(seq);
 			PyErr_Format(PyExc_TypeError,
 				     "K._S: %d-%s item is not a string", i+1, th(i+1));
 			return NULL;
 		}
 		xS[i] = sn(PyString_AS_STRING(o), PyString_GET_SIZE(o));
 	}
+	Py_DECREF(seq);
 	return KObject_FromK(type, x);
 }
 K_ATOM(m, I, i, "returns a K month")
