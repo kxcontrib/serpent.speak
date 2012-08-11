@@ -438,7 +438,7 @@ for spec in 'add sub mul pow and or mod'.split():
     setattr(K, '__r%s__' % spec, getattr(K, '__%s__' % spec))
 del spec
 
-fields = " g  ghijefgs iif iii"
+fields = " g@ ghijefgs iif iii"
 
 def k(m, *args):
     return K._k(0, 'k)'+m, *map(K, args))
@@ -621,7 +621,18 @@ try:
     converters[timedelta] = K._knz
 except AttributeError:
     pass
-
+###############################################################################
+# Lazy addition of converters
+###############################################################################
+import __builtin__
+_imp=__builtin__.__import__
+def __import__(name, *args): 
+    m = _imp(name, *args)
+    if name == 'uuid':
+        converters[m.UUID] = lambda u: K._kguid(u.int)
+    return m
+__builtin__.__import__ = __import__
+###############################################################################
 try:
     import MA, Numeric
 except ImportError:

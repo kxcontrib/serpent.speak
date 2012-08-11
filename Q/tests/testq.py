@@ -1,7 +1,7 @@
 import unittest
 from q import *
 q("\\e 0") # disable q's debug on error
-
+KXVER=int(q('.Q.k'))
 class CallTestCase(unittest.TestCase):
     def test_a0(self):
         self.failUnlessEqual(q('{1}')(), q('1'))
@@ -21,6 +21,13 @@ class CallTestCase(unittest.TestCase):
             q("{f[x]}")(42)
         except kerr, e:
             self.failUnlessEqual(str(e), 'test')
+
+if KXVER >= 3:
+    class TestGUID(unittest.TestCase):
+        def test_conversion(self):
+            from uuid import UUID
+            u = UUID('cc165d74-88df-4973-8dd1-a1f2e0765a80')
+            self.assertEqual(int(K(u)), u.int)
         
 if __name__ == '__main__':
     unittest.main()

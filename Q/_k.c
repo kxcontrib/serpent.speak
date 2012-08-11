@@ -1276,6 +1276,7 @@ K_inspect(PyObject *self, PyObject *args)
 	case 'u': return PyInt_FromLong(k->u);
 		/* atoms */
 	case 'g': return PyInt_FromLong(k->g);
+	case '@': return _PyLong_FromByteArray(k->G0, 16, 0, 0);
 	case 'h': return PyInt_FromLong(k->h);
 	case 'i': return PyInt_FromLong(k->i);
 	case 'j': return PyLong_FromLongLong(k->j);
