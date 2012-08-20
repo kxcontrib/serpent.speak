@@ -156,7 +156,7 @@ class build_qk(Command):
                     adjust[lineno] = sentinel
                     break
                 for rlineno, start, adjusted in rules:
-                    if (rlineno is not None and
+                    if (rlineno is None or
                         lineno == rlineno) and line.startswith(start):
                         adjust[lineno] = adjusted
         if adjust:
