@@ -293,6 +293,68 @@ class ErrorTestCase(unittest.TestCase):
 
     def test_nested(self):
         self.failUnlessRaises(_k.error, q, "{{{'`xyz}0}0}", ki(0))
-        
+
+class ArrayStructTestCase(unittest.TestCase):
+    def test_type(self):
+        s = q('1 2 3').__array_struct__
+        self.assertEqual(type(s).__name__, 'PyCObject')
+
+    def test_error(self):
+        x = q('()!()')
+        self.assertRaises(AttributeError, lambda: x.__array_struct__)
+
+
+try:
+    mv = memoryview
+except NameError:
+    pass
+else:
+    import struct
+    class NewBufferTestCase(unittest.TestCase):
+        def test_simple_view(self):
+            data = [
+                #('::', 'P', 8),
+                ('0b', '?', 1, False),
+                ('0x0', "B", 1, 0),
+                ('0h', "h", 2, 0),
+                ('0i', "i", 4, 0),
+                ('0j', "q", 8, 0),
+                ('0e', "f", 4, 0.0),
+                ('0f', "d", 8, 0.0),
+                ('" "', "c", 1, ' '),
+                ('2000.01m', "i", 4, 0),
+                ('2000.01.01', "i", 4, 0),
+                ('2000.01.01T00:00', "d", 8, 0),
+                ('00:00', "i", 4, 0),
+                ('00:00:00', "i", 4, 0),
+                ('00:00:00.000', "i", 4, 0),
+                ]
+            if KXVER >= 3:
+                data.append(('0Ng', "16B", 16, 0))
+                
+            for x, f, s, u in data:
+                m = memoryview(q(x))
+                self.assertEqual(m.ndim, 0)
+                self.assertEqual(m.format, f)
+                self.assertEqual(m.itemsize, s)
+                v = struct.unpack(f, m.tobytes())
+                self.assertEqual(v[0], u, x)
+                m = memoryview(q("enlist " + x))
+                self.assertEqual(m.ndim, 1)
+                self.assertEqual(m.shape, (1,))
+                self.assertEqual(m.strides, (s,))
+                self.assertEqual(m.format, f)
+                self.assertEqual(m.itemsize, s)
+                v = struct.unpack(f, m[0])
+                self.assertEqual(v[0], u)
+                
+try:
+    from numpy import array
+except ImportError:
+    pass
+else:
+    class NumPyTestCase(unittest.TestCase):
+        pass
+
 if __name__ == '__main__':
     unittest.main()

@@ -28,7 +28,8 @@ static char __version__[] = "$Revision: 1.49 $";
 #include "longintrepr.h"
 
 #include "k.h"
-#include "math.h"
+#include <math.h>
+#include <stddef.h>
 
 /* these should be in k.h */
 ZK km(I i){K x = ka(-KM);xi=i;R x;}
@@ -89,9 +90,9 @@ PyDoc_STRVAR(module_doc,
 "m  4    2000.01m     month     int	         \n"
 "d  4    2000.01.01   date      int	         \n"
 "z  8    dateTtime    datetime  double	         \n"
-"u  4    00:00        minute	                 \n"
-"v  4    00:00:00     second	                 \n"
-"t  4    00:00:00.000 time	                 \n"
+"u  4    00:00        minute	int              \n"
+"v  4    00:00:00     second	int              \n"
+"t  4    00:00:00.000 time	int              \n"
 "*  4    `s$`         enum	                 \n"
 );
 /* K objects */
@@ -369,7 +370,7 @@ k_itemsize(K x)
 		8, /* datetime */
 		0, 4, /* minute */
 		4, /* second */
-		8, /* time */
+		4, /* time */
 	};
 	int t = abs(x->t);
 	if (t < sizeof(itemsizes)/sizeof(*itemsizes))
@@ -1472,11 +1473,113 @@ K_buffer_getsegcount(KObject *self, Py_ssize_t *lenp)
         return 1;
 }
 
+#if PY_VERSION_HEX >= 0x02060000 && KXVER >= 3
+
+
+char *
+k_format(int t)
+{
+	static char *fmt[] = {"P", "?", "16B", NULL, "B", "h", "i", "q", "f", "d", "c", "P",
+			      "q", "i", "i", "d", "q", "i", "i", "i"}; 
+	if (t > 19)
+		return NULL;
+	return fmt[t];
+}
+
+int
+K_buffer_getbuffer(KObject *self, Py_buffer *view, int flags)
+{
+	K x = self->x;
+	if (!x) {
+		PyErr_SetString(PyExc_ValueError, "Null k object");
+		return -1;
+	}
+	int itemsize = k_itemsize(x);
+	Py_INCREF(self);
+	view->obj = (PyObject *)self;
+	view->readonly = 1;
+	if (xt > 0) {
+		view->ndim = 1;
+		view->itemsize = itemsize;
+		view->format = (flags&PyBUF_FORMAT)?k_format(xt):NULL;
+		view->len = itemsize * xn;
+		view->shape = view->smalltable;
+		view->strides = &view->itemsize;
+		view->suboffsets = NULL;
+		view->shape[0] = xn;
+		view->buf = xG;
+	}
+	else if (xt < 0) {
+		view->ndim = 0;
+		view->itemsize = itemsize;
+		view->format = (flags&PyBUF_FORMAT)?k_format(-xt):NULL;
+		view->len = itemsize;
+		view->shape = view->strides = view->suboffsets = NULL;
+#if KXVER >= 3
+		if (xt == -UU)
+			view->buf = x->G0;
+		else
+#endif
+			view->buf = &x->g;
+	} else {
+		/* Support rectangular 2d arrays only for now */
+		if (xn == 0) {
+			PyErr_SetString(PyExc_BufferError, "empty generic list");
+			return -1;
+		}
+		H t = xK[0]->t;
+		J m = xK[0]->n;
+		I i;
+		if (t < 0) {
+			PyErr_SetString(PyExc_BufferError, "scalar in generic list");
+                        return -1;
+		}
+		for (i = 1; i < xn; ++i) {
+			if (t != xK[i]->t) {
+				PyErr_SetString(PyExc_BufferError, "type varies");
+				return -1;
+			}
+			if (m != xK[i]->n) {
+				PyErr_SetString(PyExc_BufferError, "size varies");
+				return -1;
+			}
+		}
+		static Py_ssize_t suboffsets[2] = {offsetof(struct k0, G0), 
+						   offsetof(struct k0, G0),};
+		view->ndim = 2;
+                view->itemsize = k_itemsize(xx);
+                view->format = (flags&PyBUF_FORMAT)?k_format(t):NULL;
+                view->len = itemsize;
+                view->shape = malloc(2 * sizeof(Py_ssize_t));
+		view->shape[0] = xn;
+		view->shape[1] = m;
+		view->suboffsets = suboffsets;
+		view->strides = NULL;
+                view->buf = xG;
+	}
+	return 0; /* 0 - success / -1 - failure */
+}
+
+
+void
+K_buffer_releasebuffer(KObject *self, Py_buffer *view)
+{
+	if (view->ndim > 1)
+		free(view->shape);
+	return;
+}
+#endif
+
+
 static PyBufferProcs K_as_buffer = {
         (readbufferproc)K_buffer_getreadbuf,
         (writebufferproc)K_buffer_getwritebuf,
         (segcountproc)K_buffer_getsegcount,
         (charbufferproc)K_buffer_getreadbuf,
+#if PY_VERSION_HEX >= 0x02060000 && KXVER >= 3
+	(getbufferproc)K_buffer_getbuffer,
+	(releasebufferproc)K_buffer_releasebuffer,
+#endif
 };
 
 static PyGetSetDef K_getset[] = {
@@ -1512,7 +1615,9 @@ static PyTypeObject K_Type = {
         0,                      /*tp_getattro*/
         0,                      /*tp_setattro*/
         &K_as_buffer,           /*tp_as_buffer*/
-        Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,     /*tp_flags*/
+        Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE
+	| Py_TPFLAGS_HAVE_NEWBUFFER
+	,     /*tp_flags*/
         0,                      /*tp_doc*/
         0,                      /*tp_traverse*/
         0,                      /*tp_clear*/
