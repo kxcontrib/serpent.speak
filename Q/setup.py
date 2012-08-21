@@ -51,6 +51,11 @@ from distutils.command.build_ext import build_ext as _build_ext
 from distutils.util import get_platform
 from distutils.sysconfig import (customize_compiler, get_python_version,
                                  get_config_var)
+try:
+   from distutils.command.build_py import build_py_2to3 \
+        as build_py
+except ImportError:
+   from distutils.command.build_py import build_py
 ####
 
 class config(_config):
@@ -143,9 +148,9 @@ class build_qk(Command):
                           [self.qpath_rule, self.pyver_rule])
         # copy executable flags
         inmode = os.stat(infile).st_mode
-        if inmode & 0111:
+        if inmode & 0o111:
             outmode = os.stat(outfile).st_mode
-            os.chmod(outfile, inmode & 0111 | outmode)
+            os.chmod(outfile, inmode & 0o111 | outmode)
 
     def build_module(self, infile, outfile, rules):
         adjust = {}
@@ -395,6 +400,7 @@ class Distribution(_Distribution):
         self.cmdclass['config'] = config
 
         self.cmdclass['build'] = build
+        self.cmdclass['build_py'] = build_py
         self.cmdclass['build_qk'] = build_qk
         self.cmdclass['build_ext'] = build_ext
         self.cmdclass['build_qext'] = build_qext
@@ -412,7 +418,8 @@ class Distribution(_Distribution):
         else:
             sys.stderr.write("Unknown platform: %s\n" % str(u))
             sys.exit(1)
-        self.qarch = o+('32', '64')[sys.maxint > 2147483647]
+        bits = 8 * get_config_var('SIZEOF_VOID_P')
+        self.qarch = "%s%d" % (o, bits)
         self.install_data = os.path.join(self.qhome, self.qarch)
         self.kxver = self.get_kxver(self.qhome)
         self.qexecutable = os.path.join(self.qhome, self.qarch, 'q')
