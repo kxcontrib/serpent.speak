@@ -626,8 +626,8 @@ except AttributeError:
 ###############################################################################
 import __builtin__
 _imp=__builtin__.__import__
-def __import__(name, *args): 
-    m = _imp(name, *args)
+def __import__(name, *args, **kwds): 
+    m = _imp(name, *args, **kwds)
     if name == 'uuid':
         converters[m.UUID] = lambda u: K._kguid(u.int)
     return m
