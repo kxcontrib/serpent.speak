@@ -335,13 +335,13 @@ typedef struct {
 	Py_intptr_t *strides;
 	void *data;
 } PyArrayInterface;
-static char typechars[] = "ObXXuiiiffSOXiifXiif";
+static char typechars[20] = "ObXXuiiiffSOXiifXiii";
 
 static int
 k_typekind(K x)
 {
 	int t = abs(x->t);
-	if (t < sizeof(typechars) - 1)
+	if (t < sizeof(typechars))
 		return typechars[t];
 	return 'X';
 }
