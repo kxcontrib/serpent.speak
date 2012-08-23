@@ -78,9 +78,12 @@ class build(_build):
             self.build_qlib = os.path.join(self.build_base,
                                            'qlib' + plat_specifier)
         qarch = self.distribution.qarch
+        kxver = self.distribution.kxver[0]
         if self.build_qext is None:
             self.build_qext = os.path.join(self.build_base,
-                                           'qext.' + qarch)
+                                           'qext.%s-%s' % (qarch, kxver))
+        self.build_temp += '-kx_' + kxver
+
     def has_qk_modules(self):
         return self.distribution.has_qlib()
 
@@ -157,7 +160,8 @@ class build_qk(Command):
                         lineno == rlineno) and line.startswith(start):
                         adjust[lineno] = adjusted
         if adjust:
-            with open(infile) as source, open(outfile, 'w') as target:
+            with open(infile) as source: 
+              with open(outfile, 'w') as target:
                 for lineno, line in enumerate(source):
                     a = adjust.get(lineno)
                     if a is sentinel:
