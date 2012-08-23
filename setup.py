@@ -8,7 +8,7 @@ and Q objects live in the same memory space and share the same data.
 ###############################################################################
 metadata = dict(
     name='pyq',
-    version='3.0.1',
+    version='3.0.2',
     url='http://code.kx.com/wiki/Contrib/PyQ',
     author='The Parseltongue Project',
     author_email='serpent.speak@gmail.com',
@@ -156,7 +156,7 @@ class build_qk(Command):
                     adjust[lineno] = sentinel
                     break
                 for rlineno, start, adjusted in rules:
-                    if (rlineno is not None and
+                    if (rlineno is None or
                         lineno == rlineno) and line.startswith(start):
                         adjust[lineno] = adjusted
         if adjust:
