@@ -21,16 +21,16 @@ import os, sys
 python_lib_dir =  os.path.join(sys.exec_prefix, 'lib')
 _k = Extension('_k',
                sources=[ '_k.c',],
-               extra_compile_args = ['-g'],
+               extra_compile_args = [],
                include_dirs = [ ],)
 py = Extension('py',
                sources=[ 'py.c',],
-               extra_compile_args = ['-g', '-O0'],
+               extra_compile_args = [],
                runtime_library_dirs = [python_lib_dir],
                )
 p = Extension('p',
               sources=[ 'p.c',],
-              extra_compile_args = ['-g'],
+              extra_compile_args = [],
               runtime_library_dirs = [python_lib_dir],
               )
 metadata.update(
