@@ -127,7 +127,7 @@ class K(_k.K):
     ...            '2000.01.01T00:00:00.000;00:00;00:00:00;00:00:00.000')
     ...  .split(';')])"""
     __doc__ += """
-    '<b1,<u1,<i2,<i4,<i8,<f4,<f8,<S1,|O%d,<i4,<i4,<f8,<i4,<i4,<f8'
+    '<b1,<u1,<i2,<i4,<i8,<f4,<f8,<S1,|O%d,<i4,<i4,<f8,<i4,<i4,<i4'
     """ % _k.SIZEOF_VOID_P
     try:
         import numpy
@@ -135,13 +135,17 @@ class K(_k.K):
         pass
     else:
         del numpy
+        if _k.SIZEOF_VOID_P == 4:
+            dtypes = dict(i_dtype='', j_dtype=', dtype=int64')
+        else:
+            dtypes = dict(i_dtype=', dtype=int32', j_dtype='')
         __doc__ += """
     Numpy support
     ---------------
 
     >>> from numpy import asarray, array
     >>> asarray(k("1010b"))
-    array([True, False, True, False], dtype=bool)
+    array([ True, False,  True, False], dtype=bool)
 
     >>> asarray(k("0x102030"))
     array([16, 32, 48], dtype=uint8)
@@ -150,10 +154,10 @@ class K(_k.K):
     array([0, 1, 2], dtype=int16)
 
     >>> asarray(k("0 1 2"))
-    array([0, 1, 2])
+    array([0, 1, 2]{i_dtype})
 
     >>> asarray(k("0 1 2j"))
-    array([0, 1, 2], dtype=int64)
+    array([0, 1, 2]{j_dtype})
 
     >>> asarray(k("0 1 2e"))
     array([ 0.,  1.,  2.], dtype=float32)
@@ -164,15 +168,16 @@ class K(_k.K):
     Date-time data-types expose their underlying data:
 
     >>> asarray(k(",2000.01m"))
-    array([0])
+    array([0]{i_dtype})
 
     >>> asarray(k(",2000.01.01"))
-    array([0])
+    array([0]{i_dtype})
 
     >>> asarray(k(",2000.01.01T00:00:00.000"))
     array([ 0.])
 
-   """
+   """.format(**dtypes)
+        del dtypes
     try:
         import Numeric
     except ImportError:
@@ -646,7 +651,7 @@ else:
     k('101b')
     >>> K._from_array_interface(array([1, 2, 3], 'h').__array_struct__)
     k('1 2 3h')
-    >>> K._from_array_interface(array([1, 2, 3]).__array_struct__)
+    >>> K._from_array_interface(array([1, 2, 3], 'i').__array_struct__)
     k('1 2 3')
     >>> K._from_array_interface(array([1, 2, 3], 'q').__array_struct__)
     k('1 2 3j')
@@ -660,7 +665,7 @@ else:
     k('1b')
     >>> K._from_array_interface(array(1, 'h').__array_struct__)
     k('1h')
-    >>> K._from_array_interface(array(1).__array_struct__)
+    >>> K._from_array_interface(array(1, 'i').__array_struct__)
     k('1')
     >>> K._from_array_interface(array(1, 'q').__array_struct__)
     k('1j')
@@ -671,8 +676,8 @@ else:
     """
 
 def _test():
-    import doctest
-    doctest.testmod()
+    import doctest, sys
+    doctest.testmod(sys.modules[__name__])
 
 if __name__ == "__main__":
     _test()
