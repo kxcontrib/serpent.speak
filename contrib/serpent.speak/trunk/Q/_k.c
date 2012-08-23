@@ -444,13 +444,19 @@ static PyObject *K_K(PyTypeObject *type, PyObject *arg);
 static PyObject *
 K_call_any(KObject *self, PyObject *args)
 {
+	PyObject *ret, *kargs;
 	switch (PyTuple_GET_SIZE(args)) {
 	case 0:
 		R K_a0(self);
 	case 1:
 		R K_a1(self, PyTuple_GET_ITEM(args, 0));
 	}
-	R K_dot(self, K_K(self->ob_type, args));
+	kargs = K_K(self->ob_type, args);
+	if (kargs == NULL)
+		R NULL;
+	ret = K_dot(self, kargs);
+	Py_DECREF(kargs);
+	R ret;
 }
 # define K_call K_call_any
 
@@ -868,13 +874,14 @@ K_K(PyTypeObject *type, PyObject *arg)
 	for (i = 0; i < n; ++i) {
 		PyObject *o = PySequence_Fast_GET_ITEM(seq, i);
 		if (!K_Check(o)) {
-			r0(x);
+			r0(x); Py_DECREF(seq);
 			PyErr_Format(PyExc_TypeError,
 				     "K._K: %d-%s item is not a K object", i+1, th(i+1));
 			return NULL;
 		}
 		xK[i] = r1(((KObject*)o)->x);
 	}
+	Py_DECREF(seq);
 	return KObject_FromK(type, x);
 }
 
