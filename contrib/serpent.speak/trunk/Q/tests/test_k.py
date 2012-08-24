@@ -19,87 +19,87 @@ if KXVER >= 3:
 def kstr(x):
     return k(0, '-3!', x).inspect('s')
 
-def eq(a, b):
-    test = k(0, '~', a, b).inspect('g')
-    if not test:
-        print 'ERROR:', kstr(a), '<>', kstr(b)
-    return test
+class K_TestCase(unittest.TestCase):
+    def assert_k_is(self, x, y):
+        test = k(0, '~[%s;]' % y, x).inspect('g')
+        if not test:
+            raise self.failureException(kstr(x) + ' <> ' + y)
 
-class AtomTestCase(unittest.TestCase):
+class AtomTestCase(K_TestCase):
     def test_kb(self):
-        self.failUnless(eq(kb(1), k(0, '1b')))
+        self.assert_k_is(kb(1), '1b')
     def test_kg(self):
-        self.failUnless(eq(kg(1), k(0, '0x01')))
+        self.assert_k_is(kg(1), '0x01')
     def test_kh(self):
-        self.failUnless(eq(kh(1), k(0, '1h')))
+        self.assert_k_is(kh(1), '1h')
     def test_ki(self):
-        self.failUnless(eq(ki(1), k(0, '1i')))
+        self.assert_k_is(ki(1), '1i')
     def test_kj(self):
-        self.failUnless(eq(kj(1), k(0, '1j')))
-        self.failUnless(eq(kj(9223372036854775806), k(0, '9223372036854775806j')))
+        self.assert_k_is(kj(1), '1j')
+        self.assert_k_is(kj(9223372036854775806), '9223372036854775806j')
     def test_ke(self):
-        self.failUnless(eq(ke(1), k(0, '1e')))
+        self.assert_k_is(ke(1), '1e')
     def test_kf(self):
-        self.failUnless(eq(kf(1), k(0, '1f')))
+        self.assert_k_is(kf(1), '1f')
     def test_kc(self):
-        self.failUnless(eq(kc('x'), k(0, '"x"')))
+        self.assert_k_is(kc('x'), '"x"')
     def test_ks(self):
-        self.failUnless(eq(ks('abc'), k(0, '`abc')))
+        self.assert_k_is(ks('abc'), '`abc')
     def test_km(self):
-        self.failUnless(eq(km(1), k(0, '2000.02m')))
+        self.assert_k_is(km(1), '2000.02m')
     def test_kd(self):
-        self.failUnless(eq(kd(1), k(0, '2000.01.02')))
+        self.assert_k_is(kd(1), '2000.01.02')
     def test_kdd(self):
-        self.failUnless(eq(kdd(date(2000,1,2)), k(0, '2000.01.02')))
+        self.assert_k_is(kdd(date(2000,1,2)), '2000.01.02')
     def test_ktt(self):
-        self.failUnless(eq(ktt(time(10,11,12,1000)), k(0, '10:11:12.001')))
+        self.assert_k_is(ktt(time(10,11,12,1000)), '10:11:12.001')
     def test_kzz(self):
-        self.failUnless(eq(kzz(datetime(2000,1,2,10,11,12,1000)), k(0, '2000.01.02T10:11:12.001')))
+        self.assert_k_is(kzz(datetime(2000,1,2,10,11,12,1000)), '2000.01.02T10:11:12.001')
     def test_kpz(self):
-        self.failUnless(eq(kpz(datetime(2000,1,2,10,11,12,1000)), k(0, '2000.01.02D10:11:12.001000000')))
+        self.assert_k_is(kpz(datetime(2000,1,2,10,11,12,1000)), '2000.01.02D10:11:12.001000000')
     def test_knz(self):
-        self.failUnless(eq(knz(timedelta(100,20,1000)), k(0, '100D00:00:20.001000000')))
+        self.assert_k_is(knz(timedelta(100,20,1000)), '100D00:00:20.001000000')
     def test_kz(self):
-        self.failUnless(eq(kz(1.5), k(0, '2000.01.02T12:00:00.000')))
+        self.assert_k_is(kz(1.5), '2000.01.02T12:00:00.000')
     def test_ku(self):
-        self.failUnless(eq(ku(1), k(0, '00:01')))
+        self.assert_k_is(ku(1), '00:01')
     def test_kv(self):
-        self.failUnless(eq(kv(1), k(0, '00:00:01')))
+        self.assert_k_is(kv(1), '00:00:01')
     def test_kt(self):
-        self.failUnless(eq(kt(1), k(0, '00:00:00.001')))
+        self.assert_k_is(kt(1), '00:00:00.001')
 
-class ListTestCase(unittest.TestCase):
+class ListTestCase(K_TestCase):
     def test_kp(self):
-        self.failUnless(eq(kp("abc"), k(0, '"abc"')))
+        self.assert_k_is(kp("abc"), '"abc"')
     def test_I(self):
-        self.failUnless(eq(I([]), k(0, '`int$()')))
-        self.failUnless(eq(I([1,2]), k(0, '1 2i')))
+        self.assert_k_is(I([]), '`int$()')
+        self.assert_k_is(I([1,2]), '1 2i')
     def test_F(self):
-        self.failUnless(eq(F([]), k(0, '`float$()')))
-        self.failUnless(eq(F([1., 2.]), k(0, '1 2f')))
+        self.assert_k_is(F([]), '`float$()')
+        self.assert_k_is(F([1., 2.]), '1 2f')
     def test_S(self):
-        self.failUnless(eq(S([]), k(0, '`symbol$()')))
-        self.failUnless(eq(S(['aa', 'bb']), k(0, '`aa`bb')))
+        self.assert_k_is(S([]), '`symbol$()')
+        self.assert_k_is(S(['aa', 'bb']), '`aa`bb')
     def test_K(self):
-        self.failUnless(eq(K([]), k(0, '()')))
-        self.failUnless(eq(K([ki(0), kf(1)]), k(0, '(0i;1f)')))
+        self.assert_k_is(K([]), '()')
+        self.assert_k_is(K([ki(0), kf(1)]), '(0i;1f)')
 
-class TableDictTestCase(unittest.TestCase):
+class TableDictTestCase(K_TestCase):
     def test_xD(self):
-        self.failUnless(eq(xD(S('abc'), I(range(3))), k(0, '`a`b`c!0 1 2i')))
+        self.assert_k_is(xD(S('abc'), I(range(3))), '`a`b`c!0 1 2i')
 
     def test_xT(self):
         a = S('XYZ')
         b = kp('xyz')
         c = I([1,2,3])
-        self.failUnless(eq(xT(xD(S('abc'), K([a,b,c]))),
-                           k(0, '([]a:`X`Y`Z;b:"xyz";c:1 2 3i)')))
+        self.assert_k_is(xT(xD(S('abc'), K([a,b,c]))),
+                         '([]a:`X`Y`Z;b:"xyz";c:1 2 3i)')
     def test_ktd(self):
         x = k(0, '([a:1 2 3]b:10 20 30)')
-        y = k(0, '([]a:1 2 3;b:10 20 30)')
-        self.failUnless(eq(ktd(x),y))
+        y = '([]a:1 2 3;b:10 20 30)'
+        self.assert_k_is(ktd(x),y)
 
-class IterTestCase(unittest.TestCase):
+class IterTestCase(K_TestCase):
     def test_bool(self):
         self.failUnlessEqual(list(k(0,'101b')), [True, False, True])
 
@@ -159,46 +159,46 @@ class IterTestCase(unittest.TestCase):
 
     def test_table(self):
         t = k(0, '([]a:`X`Y`Z;b:"xyz";c:1 2 3)')
-        d = [k(0, '`a`b`c!(`X;"x";1)'),
-             k(0, '`a`b`c!(`Y;"y";2)'),
-             k(0, '`a`b`c!(`Z;"z";3)'),]
+        d = ['`a`b`c!(`X;"x";1)',
+             '`a`b`c!(`Y;"y";2)',
+             '`a`b`c!(`Z;"z";3)',]
         for x,y in zip(t, d):
-            self.failUnless(eq(x,y))
+            self.assert_k_is(x, y)
 
     if KXVER >= 3:
         def test_guid(self):
             s = '0x16151413121110090807060504030201'
             l = long(s, 16)
-            self.assertTrue(eq(kguid(l), k(0, '0x0 sv ' + s)))
+            self.assert_k_is(kguid(l), '0x0 sv ' + s)
             self.assertEqual([l], list(k(0, 'enlist 0x0 sv ' + s)))
 
-class CallsTestCase(unittest.TestCase):
+class CallsTestCase(K_TestCase):
     def test_dot(self):
         x = k(0, '+')._dot(I([1, 2]))
-        y = ki(3)
-        self.failUnless(eq(x, y))
+        y = '3i'
+        self.assert_k_is(x, y)
 
 #     def test_a0(self):
 #         x = k(0, '{1}')._a0()
 #         y = ki(1)
-#         self.failUnless(eq(x, y))
+#         self.assert_k_is(x, y))
 
     def test_a1(self):
         x = k(0, 'neg')._a1(ki(1))
-        y = ki(-1)
-        self.failUnless(eq(x, y))
+        y = '-1i'
+        self.assert_k_is(x, y)
 
 #     def test_a2(self):
 #         x = k(0, '+')._a2(ki(1), ki(2))
 #         y = ki(3)
-#         self.failUnless(eq(x, y))
+#         self.assert_k_is(x, y))
 
 #     def test_a3(self):
 #         x = k(0, 'plist')._a3(ki(1), ki(2), ki(3))
 #         y = I([1,2,3])
-#         self.failUnless(eq(x, y))
+#         self.assert_k_is(x, y))
 
-class StrTestCase(unittest.TestCase):
+class StrTestCase(K_TestCase):
     def test_pass(self):
         x = 'abc'
         self.failUnlessEqual(str(ks(x)), x)
@@ -236,54 +236,54 @@ class ReprTestCase(unittest.TestCase):
             self.failUnlessEqual(repr(kj(1)), "k('1j')")
         self.failUnlessEqual(repr(kf(1)), "k('1f')")
         
-class JoinTestCase(unittest.TestCase):
+class JoinTestCase(K_TestCase):
     def test_byte(self):
         x = q('0x0102')
         x._ja(3)
-        y = q('0x010203')
-        self.failUnless(eq(x, y))
+        y = '0x010203'
+        self.assert_k_is(x, y)
         
     def test_short(self):
         x = q('1 2h')
         x._ja(3)
-        y = q('1 2 3h')
-        self.failUnless(eq(x, y))
+        y = '1 2 3h'
+        self.assert_k_is(x, y)
         
     def test_int(self):
         x = q('1 2')
         x._ja(3)
-        y = q('1 2 3')
-        self.failUnless(eq(x, y))
+        y = '1 2 3'
+        self.assert_k_is(x, y)
         
     def test_long(self):
         x = q('1 2j')
         x._ja(3)
-        y = q('1 2 3j')
-        self.failUnless(eq(x, y))
+        y = '1 2 3j'
+        self.assert_k_is(x, y)
 
     def test_real(self):
         x = q('1 2e')
         x._ja(3)
-        y = q('1 2 3e')
-        self.failUnless(eq(x, y))
+        y = '1 2 3e'
+        self.assert_k_is(x, y)
 
     def test_float(self):
         x = q('1 2f')
         x._ja(3)
-        y = q('1 2 3f')
-        self.failUnless(eq(x, y))
+        y = '1 2 3f'
+        self.assert_k_is(x, y)
 
     def test_str(self):
         x = q('"ab"')
         x._ja('c')
-        y = q('"abc"')
-        self.failUnless(eq(x, y))
+        y = '"abc"'
+        self.assert_k_is(x, y)
         
     def test_sym(self):
         x = q('`a`b')
         x._ja('c')
-        y = q('`a`b`c')
-        self.failUnless(eq(x, y))
+        y = '`a`b`c'
+        self.assert_k_is(x, y)
 
 class ErrorTestCase(unittest.TestCase):
     def test_simple(self):
