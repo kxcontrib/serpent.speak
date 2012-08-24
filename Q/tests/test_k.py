@@ -181,11 +181,12 @@ class CallsTestCase(K_TestCase):
         x = k(0, '+')._dot(I([1, 2]))
         y = '3i'
         self.assert_k_is(x, y)
+        self.assertRaises(err, q('+')._dot, q('``'))
 
-#     def test_a0(self):
-#         x = k(0, '{1}')._a0()
-#         y = ki(1)
-#         self.assert_k_is(x, y))
+
+    def test_a0(self):
+         x = k(0, '{1}')._a0()
+         self.assert_k_is(x, '1')
 
     def test_a1(self):
         x = k(0, 'neg')._a1(ki(1))
