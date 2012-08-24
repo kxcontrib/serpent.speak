@@ -1,7 +1,7 @@
 /* -*- mode: c; c-basic-offset: 8 -*- */
-static char __version__[] = "$Revision: 1.49 $";
+static char __version__[] = "$Revision$";
 /*
-  K object layout (32 bit):
+  K object layout (KXVER < 3, 32 bit):
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6
 +-------+---+---+-------+--------
 |   r   | t | u |   n   |  G0 ...  
@@ -78,7 +78,7 @@ PY_STR_AsStringAndSize(PyObject* obj, char **str, Py_ssize_t *size)
 	static struct PyModuleDef moduledef = {			  \
 		PyModuleDef_HEAD_INIT, name, doc, -1, methods, }; \
 	ob = PyModule_Create(&moduledef);
-#else
+#else /* PY_MAJOR_VERSION >= 3 */
 
 #    define PY_STR_Check PyString_Check
 #    define PY_STR_FromString PyString_FromString
@@ -95,7 +95,7 @@ PY_STR_AsStringAndSize(PyObject* obj, char **str, Py_ssize_t *size)
 #    define MOD_INIT(name) void init##name(void)
 #    define MOD_DEF(ob, name, doc, methods)		\
 	ob = Py_InitModule3(name, methods, doc);
-#endif
+#endif  /* PY_MAJOR_VERSION >= 3 */
 /* ^^^ Py3K compatibility ^^^ */
 
 
