@@ -31,6 +31,16 @@ static char __version__[] = "$Revision: 1.49 $";
 #include <math.h>
 #include <stddef.h>
 
+/* vvv Python 2.5 compatibility vvv */
+#ifndef Py_TYPE
+#define Py_TYPE(ob) (((PyObject*)(ob))->ob_type)
+#endif
+#ifndef PyVarObject_HEAD_INIT
+#define PyVarObject_HEAD_INIT(type, size) \
+        PyObject_HEAD_INIT(type) size,
+#endif
+/* ^^^ Python 2.5 compatibility ^^^ */
+
 /* these should be in k.h */
 ZK km(I i){K x = ka(-KM);xi=i;R x;}
 ZK kuu(I i){K x = ka(-KU);xi=i;R x;}
@@ -43,7 +53,7 @@ typedef struct {
 static PyTypeObject K_Type;
 
 #define K_Check(op) PyObject_TypeCheck(op, &K_Type)
-#define K_CheckExact(op) ((op)->ob_type == &K_Type)
+#define K_CheckExact(op) (Py_TYPE(op) == &K_Type)
 
 #include <stdio.h>
 #include <ctype.h>
@@ -134,17 +144,17 @@ K_dealloc(KObject *self)
 	if (self->x) {
 		r0(self->x);
 	}
-	self->ob_type->tp_free(self);
+	Py_TYPE(self)->tp_free(self);
 }
 
 static PyObject*
 K_dot(KObject *self, PyObject *args)
 {
 	R K_Check(args)
-		? KObject_FromK(self->ob_type, 
+		? KObject_FromK(Py_TYPE(self), 
 				k(0, ".", r1(self->x), r1(((KObject*)args)->x), (K)0))
 		: PyErr_Format(PyExc_TypeError, "expected a K object, not %s",
-			       args->ob_type->tp_name);
+			       Py_TYPE(args)->tp_name);
 }
 
 /* extern K a1(K,K); */
@@ -156,15 +166,15 @@ K_a0(KObject *self)
 		Py_INCREF(self);
 		return (PyObject*)self;
 	}
-	R KObject_FromK(self->ob_type, k(0, "@", r1(x), r1(k_none), (K)0));
+	R KObject_FromK(Py_TYPE(self), k(0, "@", r1(x), r1(k_none), (K)0));
 }
 static PyObject*
 K_a1(KObject *self, PyObject *arg)
 {
 	R K_Check(arg)
-		? KObject_FromK(self->ob_type, k(0, "@", r1(self->x), r1(((KObject*)arg)->x), (K)0))
+		? KObject_FromK(Py_TYPE(self), k(0, "@", r1(self->x), r1(((KObject*)arg)->x), (K)0))
 		: PyErr_Format(PyExc_TypeError, "expected a K object, not %s",
-			       arg->ob_type->tp_name);
+			       Py_TYPE(arg)->tp_name);
 }
 
 static PyObject*
@@ -176,7 +186,7 @@ K_ja(KObject *self, PyObject *arg)
 			jk(&self->x, r1(((KObject*)arg)->x));
 		else
 			R PyErr_Format(PyExc_TypeError, "K._ja: expected K object, not %s", 
-				       arg->ob_type->tp_name);
+				       Py_TYPE(arg)->tp_name);
 		break;
 	}
 	case KB: {
@@ -186,7 +196,7 @@ K_ja(KObject *self, PyObject *arg)
 		}
 		else
 			R PyErr_Format(PyExc_TypeError, "K._ja: expected bool, not %s", 
-				       arg->ob_type->tp_name);
+				       Py_TYPE(arg)->tp_name);
 		break;
 	}
 	case KG: {
@@ -451,7 +461,7 @@ K_call_any(KObject *self, PyObject *args)
 	case 1:
 		R K_a1(self, PyTuple_GET_ITEM(args, 0));
 	}
-	kargs = K_K(self->ob_type, args);
+	kargs = K_K(Py_TYPE(self), args);
 	if (kargs == NULL)
 		R NULL;
 	ret = K_dot(self, kargs);
@@ -699,7 +709,7 @@ K_kdd(PyTypeObject *type, PyDateTime_Date *arg)
 {
 	if (!PyDate_Check(arg))
 		return PyErr_Format(PyExc_TypeError, "expected a date object, not %s",
-				    arg->ob_type->tp_name);
+				    Py_TYPE(arg)->tp_name);
 	int y, m, d;
 	y = PyDateTime_GET_YEAR(arg);
 	m = PyDateTime_GET_MONTH(arg);
@@ -717,7 +727,7 @@ K_ktt(PyTypeObject *type, PyObject *arg)
 {
 	if (!PyTime_Check(arg))
 		return PyErr_Format(PyExc_TypeError, "expected a time object, not %s",
-				    arg->ob_type->tp_name);
+				    Py_TYPE(arg)->tp_name);
 	int h, m, s, u;
 	h = PyDateTime_TIME_GET_HOUR(arg);
 	m = PyDateTime_TIME_GET_MINUTE(arg);
@@ -736,7 +746,7 @@ K_kzz(PyTypeObject *type, PyObject *arg)
 {
 	if (!PyDateTime_Check(arg))
 		return PyErr_Format(PyExc_TypeError, "expected a date object, not %s",
-				    arg->ob_type->tp_name);
+				    Py_TYPE(arg)->tp_name);
 	int y, m, d, h, u, s, i;
 	y = PyDateTime_GET_YEAR(arg);
 	m = PyDateTime_GET_MONTH(arg);
@@ -760,7 +770,7 @@ K_knz(PyTypeObject *type, PyObject *arg)
 {
 	if (!PyDelta_Check(arg))
 		return PyErr_Format(PyExc_TypeError, "expected a timedelta object, not %s",
-				    arg->ob_type->tp_name);
+				    Py_TYPE(arg)->tp_name);
 	int d, s, u;
 	d = ((PyDateTime_Delta*)arg)->days;
 	s = ((PyDateTime_Delta*)arg)->seconds;
@@ -779,7 +789,7 @@ K_kpz(PyTypeObject *type, PyObject *arg)
 {
 	if (!PyDateTime_Check(arg))
 		return PyErr_Format(PyExc_TypeError, "expected a date object, not %s",
-				    arg->ob_type->tp_name);
+				    Py_TYPE(arg)->tp_name);
 	int y, m, d, h, u, s, i;
 	y = PyDateTime_GET_YEAR(arg);
 	m = PyDateTime_GET_MONTH(arg);
@@ -1299,7 +1309,7 @@ K_inspect(PyObject *self, PyObject *args)
 			  : PyString_FromFormat("<%p>", k->s));
 	case 'c': return PyString_FromStringAndSize((char*)&k->g, 1);
 	case 'k': return (k->t == XT
-			  ? KObject_FromK(self->ob_type, r1(k->k))
+			  ? KObject_FromK(Py_TYPE(self), r1(k->k))
 			  : PyString_FromFormat("<%p>", k->k));
 		/* lists */
 	case 'G': return PyInt_FromLong(kG(k)[i]);
@@ -1311,7 +1321,7 @@ K_inspect(PyObject *self, PyObject *args)
 	case 'S': return (k->t == KS
 			  ? PyString_FromString((char*)kS(k)[i])
 			  : PyString_FromFormat("<%p>", kS(k)[i]));
-	case 'K': return KObject_FromK(self->ob_type, r1(kK(k)[i]));
+	case 'K': return KObject_FromK(Py_TYPE(self), r1(kK(k)[i]));
 	}
 	return PyErr_Format(PyExc_KeyError, "no such field: '%c'", c);
 }
@@ -1599,10 +1609,7 @@ static PyGetSetDef K_getset[] = {
 static PyObject *k_iter(KObject *o);
 
 static PyTypeObject K_Type = {
-	/* The ob_type field must be initialized in the module init function
-	 * to be portable to Windows without using C++. */
-	PyObject_HEAD_INIT(NULL)
-	0,			/*ob_size*/
+	PyVarObject_HEAD_INIT(NULL, 0)
 	"_k.K",	         	/*tp_name*/
 	sizeof(KObject),	/*tp_basicsize*/
 	0,			/*tp_itemsize*/
@@ -1713,7 +1720,7 @@ k_iter(KObject *obj)
 	it = PyObject_GC_New(kiterobject, &KObjectIter_Type);
 	if (it == NULL)
 		return NULL;
-	Py_INCREF(it->ktype = obj->ob_type);
+	Py_INCREF(it->ktype = Py_TYPE(obj));
 	x = obj->x;
 	if (xt == XD)
 		x = xx;
@@ -1884,8 +1891,7 @@ kiter_traverse(kiterobject *it, visitproc visit, void *arg)
 }
 
 static PyTypeObject KObjectIter_Type = {
-	PyObject_HEAD_INIT(NULL)
-	0,                                      /* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)
 	"kiterator",                            /* tp_name */
 	sizeof(kiterobject),                    /* tp_basicsize */
 	0,                                      /* tp_itemsize */
