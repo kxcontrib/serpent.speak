@@ -41,6 +41,64 @@ static char __version__[] = "$Revision: 1.49 $";
 #endif
 /* ^^^ Python 2.5 compatibility ^^^ */
 
+/* vvv Py3K compatibility vvv */
+#if PY_MAJOR_VERSION >= 3
+
+#    define PyInt_AsLong PyLong_AsLong
+#    define PyInt_FromLong PyLong_FromLong
+
+#    define PyString_FromStringAndSize PyBytes_FromStringAndSize
+#    define PyString_AsStringAndSize PyBytes_AsStringAndSize
+#    define PyString_FromString PyBytes_FromString
+
+#    define PY_STR_Check PyUnicode_Check
+#    define PY_STR_FromString PyUnicode_FromString
+#    define PY_STR_FromFormat PyUnicode_FromFormat
+#    define PY_STR_Format PyUnicode_Format
+#    define PY_STR_FromStringAndSize PyUnicode_FromStringAndSize
+
+#define PY_SET_SN(var, obj) {					\
+	Py_ssize_t size;					\
+	char *str = _PyUnicode_AsStringAndSize(obj, &size);	\
+	var = sn(str, size);					\
+	}
+
+static int
+PY_STR_AsStringAndSize(PyObject* obj, char **str, Py_ssize_t *size)
+{
+	*str = _PyUnicode_AsStringAndSize(obj, size);
+	return str?0:-1;
+}
+
+
+#    define MOD_ERROR_VAL NULL
+#    define MOD_SUCCESS_VAL(val) val
+#    define MOD_INIT(name) PyMODINIT_FUNC PyInit_##name(void)
+#    define MOD_DEF(ob, name, doc, methods)			  \
+	static struct PyModuleDef moduledef = {			  \
+		PyModuleDef_HEAD_INIT, name, doc, -1, methods, }; \
+	ob = PyModule_Create(&moduledef);
+#else
+
+#    define PY_STR_Check PyString_Check
+#    define PY_STR_FromString PyString_FromString
+#    define PY_STR_FromFormat PyString_FromFormat
+#    define PY_STR_Format PyString_Format
+#    define PY_STR_FromStringAndSize PyString_FromStringAndSize
+#    define PY_STR_AsStringAndSize PyString_AsStringAndSize
+
+#define PY_SET_SN(var, obj) var = sn(PyString_AS_STRING(obj),	\
+				     PyString_GET_SIZE(obj));
+
+#    define MOD_ERROR_VAL
+#    define MOD_SUCCESS_VAL(val)
+#    define MOD_INIT(name) void init##name(void)
+#    define MOD_DEF(ob, name, doc, methods)		\
+	ob = Py_InitModule3(name, methods, doc);
+#endif
+/* ^^^ Py3K compatibility ^^^ */
+
+
 /* these should be in k.h */
 ZK km(I i){K x = ka(-KM);xi=i;R x;}
 ZK kuu(I i){K x = ka(-KU);xi=i;R x;}
@@ -292,16 +350,16 @@ K_str(KObject *self)
 	K x = self->x;
 	switch (xt) {
 	case KC:
-		return PyString_FromStringAndSize((S)xC, xn);
+		return PY_STR_FromStringAndSize((S)xC, xn);
 	case -KS:
-		return PyString_FromString(xs);
+		return PY_STR_FromString(xs);
 	case -KC:
-		return PyString_FromStringAndSize((S)&xg, 1);
+		return PY_STR_FromStringAndSize((S)&xg, 1);
 	}
 	x = k(0, "@", r1(k_repr), r1(x), (K)0);
 	if (xt == -128)
 		return PyErr_SetString(ErrorObject, xs?xs:(S)"not set"),r0(x),NULL;
-	return PyString_FromStringAndSize((S)xC, xn);
+	return PY_STR_FromStringAndSize((S)xC, xn);
 }
 static PyObject*
 K_repr(KObject *self)
@@ -310,18 +368,18 @@ K_repr(KObject *self)
 	PyObject *f, *s, *r;
 	x = k(0, "@", r1(k_repr), r1(x), (K)0);
 	if (xt == -128) {
-		r = PyString_FromFormat("<k object at %p of type %hd, '%s>", 
+		r = PY_STR_FromFormat("<k object at %p of type %hd, '%s>", 
 					self->x, self->xt, xs);
 		r0(x); R r;
 	}
 
-	f = PyString_FromString("k(%r)");
+	f = PY_STR_FromString("k(%r)");
 	if (f == NULL)
 		R NULL;
-	s = PyString_FromStringAndSize((S)xC, xn);
+	s = PY_STR_FromStringAndSize((S)xC, xn);
 	if (s == NULL)
 		R NULL;
-	r = PyString_Format(f, s);
+	r = PY_STR_Format(f, s);
 	Py_DECREF(f);
 	Py_DECREF(s);
 	R r;
@@ -389,8 +447,15 @@ k_itemsize(K x)
 }
 
 static void
+#if PY_MAJOR_VERSION >= 3
+k_array_struct_free(PyObject *cap)
+{
+	void *ptr = PyCapsule_GetPointer(cap, "__array_struct__");
+	void *arr = PyCapsule_GetContext(cap);
+#else
 k_array_struct_free(void *ptr, void *arr)
 {
+#endif
 	PyArrayInterface *inter	= (PyArrayInterface *)ptr;
 	free(inter->shape);
         free(inter);
@@ -433,7 +498,16 @@ K_array_struct_get(KObject *self)
 		inter->data = &k->g;
 	}
 	Py_INCREF(self);
+#if PY_MAJOR_VERSION >= 3
+	PyObject *cap = PyCapsule_New(inter, "__array_struct__", &k_array_struct_free);
+	if (PyCapsule_SetContext(cap, self)) {
+		Py_DECREF(cap);
+		return NULL;
+	}
+	return cap;
+#else
 	return PyCObject_FromVoidPtrAndDesc(inter, self, &k_array_struct_free);
+#endif
  fail_shape:
 	free(inter);
  fail_inter:
@@ -447,7 +521,7 @@ K_array_typestr_get(KObject *self)
 	static int const one = 1;
 	char const endian = "><"[(int)*(char const*)&one];
 	char const typekind = k_typekind(k);
-	return PyString_FromFormat("%c%c%d", typekind == 'O'?'|':endian,
+	return PY_STR_FromFormat("%c%c%d", typekind == 'O'?'|':endian,
 				   typekind, k_itemsize(k));
 }
 static PyObject *K_K(PyTypeObject *type, PyObject *arg);
@@ -511,12 +585,28 @@ K_from_array_interface(PyTypeObject *type, PyObject *arg)
 	PyArrayInterface *inter;
 	K x;
 	int t, s;
-	if (!PyCObject_Check(arg) 
-	    || ((inter=((PyArrayInterface *)PyCObject_AsVoidPtr(arg)))->version != 2)) 
-		{
-			PyErr_SetString(PyExc_ValueError, "invalid __array_struct__");
-			return NULL;
-		}
+#if PY_MAJOR_VERSION >= 3
+	if (!PyCapsule_CheckExact(arg)) {
+		PyErr_Format(PyExc_ValueError, "invalid __array_struct__ type:"
+			     " expected PyCapsule, not %s", Py_TYPE(arg)->tp_name);
+		return NULL;
+	}
+	inter = (PyArrayInterface *)PyCapsule_GetPointer(arg, "__array_struct__");
+	if (inter == NULL)
+		return NULL;
+#else
+	if (!PyCObject_Check(arg)) {
+		PyErr_Format(PyExc_ValueError, "invalid __array_struct__ type:"
+			     " expected PyCObject, not %s", Py_TYPE(arg)->tp_name);
+		return NULL;
+	}
+	inter = (PyArrayInterface *)PyCObject_AsVoidPtr(arg);
+#endif	
+	if (inter->version != 2) {
+		PyErr_Format(PyExc_ValueError, "invalid __array_struct__:"
+			     " expected version 2, not %d", inter->version);
+		return NULL;
+	}	
 	if (inter->nd > 1) {
 		PyErr_Format(PyExc_ValueError, "cannot handle nd=%d",
 			     inter->nd);
@@ -544,16 +634,16 @@ K_from_array_interface(PyTypeObject *type, PyObject *arg)
 			dest = xS;
 			for(i = 0; i < n; ++i) {
 				PyObject* obj = src[i*inter->strides[0]/s];
-				if (!PyString_Check(obj)) {
+				if (!PY_STR_Check(obj)) {
 					PyErr_SetString(PyExc_ValueError, "non-string in object array");
 					r0(x);
 					return NULL;
 				}
-				dest[i] = sn(PyString_AS_STRING(obj),  PyString_GET_SIZE(obj));
+				PY_SET_SN(dest[i], obj)
 			}
 		} else {
 			PyObject* obj = src[0];
-			xs = sn(PyString_AS_STRING(obj),  PyString_GET_SIZE(obj));
+			PY_SET_SN(xs, obj)
 		}
 	}
 	else {
@@ -632,8 +722,16 @@ K_I(PyTypeObject *type, PyObject *arg)
 	K x = ktn(KI, n);
 	for (i = 0; i < n; ++i) {
 		PyObject *o = PySequence_Fast_GET_ITEM(seq, i);
+#if PY_MAJOR_VERSION < 3
 		if (PyInt_Check(o))
 			item = PyInt_AS_LONG(o);
+		else
+#endif
+		if (PyLong_Check(o)) {
+			item = PyLong_AsLong(o);
+			if (item == -1 && PyErr_Occurred())
+				return NULL;
+		}
 		else {
 			if (o == Py_None)
 				item = ni;
@@ -818,13 +916,13 @@ K_S(PyTypeObject *type, PyObject *arg)
 	K x = ktn(KS, n);
 	for (i = 0; i < n; ++i) {
 		PyObject *o = PySequence_Fast_GET_ITEM(seq, i);
-		if (!PyString_Check(o)) {
+		if (!PY_STR_Check(o)) {
 			r0(x);Py_DECREF(seq);
 			PyErr_Format(PyExc_TypeError,
 				     "K._S: %d-%s item is not a string", i+1, th(i+1));
 			return NULL;
 		}
-		xS[i] = sn(PyString_AS_STRING(o), PyString_GET_SIZE(o));
+		PY_SET_SN(xS[i], o)
 	}
 	Py_DECREF(seq);
 	return KObject_FromK(type, x);
@@ -1285,7 +1383,7 @@ K_inspect(PyObject *self, PyObject *args)
 #if KXVER >=3
 	case 'm': return PyInt_FromLong(k->m);
 	case 'a': return PyInt_FromLong(k->a);
-	case 'n': return PyInt_FromSsize_t(k->n);
+	case 'n': return PyLong_FromSsize_t(k->n);
 #else
 	case 'n': return PyInt_FromLong(k->n);
 #endif
@@ -1301,16 +1399,16 @@ K_inspect(PyObject *self, PyObject *args)
 	case 'e': return PyFloat_FromDouble(k->e);
 	case 'f': return PyFloat_FromDouble(k->f);
 	case 's': return (k->t == -KS
-			  ? PyString_FromString((char*)k->s)
+			  ? PY_STR_FromString((char*)k->s)
 			  : k->t == KC
-			  ? PyString_FromStringAndSize((char*)kG(k), k->n)
+			  ? PY_STR_FromStringAndSize((char*)kG(k), k->n)
 			  : k->t == -KC
-			  ? PyString_FromStringAndSize((char*)&k->g, 1)
-			  : PyString_FromFormat("<%p>", k->s));
-	case 'c': return PyString_FromStringAndSize((char*)&k->g, 1);
+			  ? PY_STR_FromStringAndSize((char*)&k->g, 1)
+			  : PY_STR_FromFormat("<%p>", k->s));
+	case 'c': return PyBytes_FromStringAndSize((char*)&k->g, 1);
 	case 'k': return (k->t == XT
 			  ? KObject_FromK(Py_TYPE(self), r1(k->k))
-			  : PyString_FromFormat("<%p>", k->k));
+			  : PY_STR_FromFormat("<%p>", k->k));
 		/* lists */
 	case 'G': return PyInt_FromLong(kG(k)[i]);
 	case 'H': return PyInt_FromLong(kH(k)[i]);
@@ -1319,8 +1417,8 @@ K_inspect(PyObject *self, PyObject *args)
 	case 'E': return PyFloat_FromDouble(kE(k)[i]);
 	case 'F': return PyFloat_FromDouble(kF(k)[i]);
 	case 'S': return (k->t == KS
-			  ? PyString_FromString((char*)kS(k)[i])
-			  : PyString_FromFormat("<%p>", kS(k)[i]));
+			  ? PY_STR_FromString((char*)kS(k)[i])
+			  : PY_STR_FromFormat("<%p>", kS(k)[i]));
 	case 'K': return KObject_FromK(Py_TYPE(self), r1(kK(k)[i]));
 	}
 	return PyErr_Format(PyExc_KeyError, "no such field: '%c'", c);
@@ -1384,7 +1482,7 @@ PyDoc_STRVAR(K_id_doc,
 static PyObject *
 K_id(KObject *self)
 {
-	return PyInt_FromSsize_t((Py_ssize_t)self->x);
+	return PyLong_FromSsize_t((Py_ssize_t)self->x);
 }
 
 static PyMethodDef 
@@ -1440,7 +1538,7 @@ K_methods[] = {
 	{"_id", (PyCFunction)K_id,  METH_NOARGS, K_id_doc},
 	{NULL,		NULL}		/* sentinel */
 };
-
+#if PY_MAJOR_VERSION < 3
 static Py_ssize_t
 K_buffer_getreadbuf(KObject *self, Py_ssize_t index, const void **ptr)
 {
@@ -1489,15 +1587,15 @@ K_buffer_getsegcount(KObject *self, Py_ssize_t *lenp)
                 *lenp = self->xn;
         return 1;
 }
-
+#endif /* PY_MAJOR_VERSION < 3 */
 #if PY_VERSION_HEX >= 0x02060000 && KXVER >= 3
-
-
 char *
 k_format(int t)
 {
-	static char *fmt[] = {"P", "?", "16B", NULL, "B", "h", "i", "q", "f", "d", "c", "P",
-			      "q", "i", "i", "d", "q", "i", "i", "i"}; 
+	static char *fmt[] = {"P", "?", "16B", 0, "B",
+			      "h", "i", "q", "f", "d",
+			      "c", "P", "q", "i", "i", 
+			      "d", "q", "i", "i", "i"}; 
 	if (t > 19)
 		return NULL;
 	return fmt[t];
@@ -1589,10 +1687,12 @@ K_buffer_releasebuffer(KObject *self, Py_buffer *view)
 
 
 static PyBufferProcs K_as_buffer = {
+#if PY_MAJOR_VERSION < 3
         (readbufferproc)K_buffer_getreadbuf,
         (writebufferproc)K_buffer_getwritebuf,
         (segcountproc)K_buffer_getsegcount,
         (charbufferproc)K_buffer_getreadbuf,
+#endif
 #if PY_VERSION_HEX >= 0x02060000 && KXVER >= 3
 	(getbufferproc)K_buffer_getbuffer,
 	(releasebufferproc)K_buffer_releasebuffer,
@@ -1629,9 +1729,11 @@ static PyTypeObject K_Type = {
         0,                      /*tp_getattro*/
         0,                      /*tp_setattro*/
         &K_as_buffer,           /*tp_as_buffer*/
-        Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE
+        Py_TPFLAGS_DEFAULT
+#if PY_VERSION_HEX >= 0x02070000 && PY_MAJOR_VERSION < 3
 	| Py_TPFLAGS_HAVE_NEWBUFFER
-	,     /*tp_flags*/
+#endif
+	| Py_TPFLAGS_BASETYPE,  /*tp_flags*/
         0,                      /*tp_doc*/
         0,                      /*tp_traverse*/
         0,                      /*tp_clear*/
@@ -1811,7 +1913,7 @@ kiter_next(kiterobject *it)
 	if (i < n)
 		switch (xt) {
 		case KS: /* most common case: use list(ks) */
-			ret = PyString_FromString(xS[i]);
+			ret = PY_STR_FromString(xS[i]);
 			break;
 		case 0:
 			ret = KObject_FromK(it->ktype, r1(xK[i]));
@@ -1827,7 +1929,7 @@ kiter_next(kiterobject *it)
 			ret = PyBool_FromLong(xG[i]);
 			break;
 		case KC:
-			ret = PyString_FromStringAndSize((S)&xC[i], 1);
+			ret = PY_STR_FromStringAndSize((S)&xC[i], 1);
 			break;
 		case KG:
 			ret = PyInt_FromLong(xG[i]);
@@ -1924,11 +2026,10 @@ static PyTypeObject KObjectIter_Type = {
 
 /* Initialization function for the module (*must* be called init_k + KXVER) */
 #define CAT(x, y) x##y
-#define XCAT(x, y) CAT(x, y)
 #define SCAT(x, y) (x #y)
 #define XSCAT(x, y) SCAT(x, y)
-PyMODINIT_FUNC
-XCAT(init_k, QVER)(void)
+#define modname CAT(_k, QVER))
+MOD_INIT(modname)
 {
 	PyObject *m;
 	/* PyObject* c_api_object; */
@@ -1942,21 +2043,23 @@ XCAT(init_k, QVER)(void)
 	u2l=k(0,"`hh`mm$\\:",(K)0);
 	k_none = k(0, "::", (K)0);
 	k_repr = k(0, "-3!", (K)0);
+
+	/* Create the module and add the functions */
+	MOD_DEF(m, XSCAT("_k", QVER), module_doc, _k_methods);
+	if (m == NULL)
+		return MOD_ERROR_VAL;
+
 	/* Finalize the type object including setting type of the new type
 	 * object; doing it here is required for portability to Windows
 	 * without requiring C++. */
 	if (PyType_Ready(&K_Type) < 0)
-		return;
+		return MOD_ERROR_VAL;
 
-	/* Create the module and add the functions */
-	m = Py_InitModule3(XSCAT("_k", QVER), _k_methods, module_doc);
-	if (!m)
-		return;
 	/* Add some symbolic constants to the module */
 	if (ErrorObject == NULL) {
 	  ErrorObject = PyErr_NewException("_k.error", NULL, NULL);
 		if (ErrorObject == NULL)
-			return;
+			return MOD_ERROR_VAL;
 	}
 	Py_INCREF(ErrorObject);
 	PyModule_AddObject(m, "error", ErrorObject);
@@ -1985,4 +2088,6 @@ XCAT(init_k, QVER)(void)
 
 	PyModule_AddIntConstant(m, "SIZEOF_VOID_P", SIZEOF_VOID_P);
 	PyModule_AddStringConstant(m, "__version__", __version__);
+	
+	return MOD_SUCCESS_VAL(m);
 }
