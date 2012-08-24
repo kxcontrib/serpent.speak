@@ -181,7 +181,7 @@ class CallsTestCase(K_TestCase):
         x = k(0, '+')._dot(I([1, 2]))
         y = '3i'
         self.assert_k_is(x, y)
-        self.assertRaises(err, q('+')._dot, q('``'))
+        self.assertRaises(_k.error, q('+')._dot, q('``'))
 
 
     def test_a0(self):
@@ -193,15 +193,12 @@ class CallsTestCase(K_TestCase):
         y = '-1i'
         self.assert_k_is(x, y)
 
-#     def test_a2(self):
-#         x = k(0, '+')._a2(ki(1), ki(2))
-#         y = ki(3)
-#         self.assert_k_is(x, y))
-
-#     def test_a3(self):
-#         x = k(0, 'plist')._a3(ki(1), ki(2), ki(3))
-#         y = I([1,2,3])
-#         self.assert_k_is(x, y))
+    def test_call(self):
+        f = q('{5}')
+        x = ki(42)
+        self.assert_k_is(f(), '5')
+        self.assert_k_is(f(x), '5')
+        self.assertRaises(_k.error, f, x, x)
 
 class StrTestCase(K_TestCase):
     def test_pass(self):
