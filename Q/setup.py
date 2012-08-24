@@ -426,6 +426,7 @@ class Distribution(_Distribution):
         _Distribution.finalize_options(self)
         for ext in self.ext_modules + self.qext_modules:
             ext.define_macros.append(('KXVER', self.kxver[0]))
+            ext.define_macros.append(('QVER', self.kxver.replace('.', '_')))
 
 
 ###############################################################################

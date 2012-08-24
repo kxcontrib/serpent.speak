@@ -1922,7 +1922,7 @@ static PyTypeObject KObjectIter_Type = {
 #define SCAT(x, y) (x #y)
 #define XSCAT(x, y) SCAT(x, y)
 PyMODINIT_FUNC
-XCAT(init_k, KXVER)(void)
+XCAT(init_k, QVER)(void)
 {
 	PyObject *m;
 	/* PyObject* c_api_object; */
@@ -1943,7 +1943,7 @@ XCAT(init_k, KXVER)(void)
 		return;
 
 	/* Create the module and add the functions */
-	m = Py_InitModule3(XSCAT("_k", KXVER), _k_methods, module_doc);
+	m = Py_InitModule3(XSCAT("_k", QVER), _k_methods, module_doc);
 	if (!m)
 		return;
 	/* Add some symbolic constants to the module */
