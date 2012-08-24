@@ -248,7 +248,7 @@ K_a0(KObject *self)
 		return (PyObject*)self;
 	}
 #if KXVER >= 3
-	static struct k0 empty = {0,0,0,0,1,0};
+	static struct k0 empty = {0,0,0,0,1};
 #else
 	static struct k0 empty = {1,0,0};
 #endif
@@ -554,7 +554,7 @@ K_array_typestr_get(KObject *self)
 }
 static PyObject *K_K(PyTypeObject *type, PyObject *arg);
 static PyObject *
-K_call_any(KObject *self, PyObject *args)
+K_call(KObject *self, PyObject *args)
 {
 	PyObject *ret, *kargs;
 	switch (PyTuple_GET_SIZE(args)) {
@@ -570,7 +570,6 @@ K_call_any(KObject *self, PyObject *args)
 	Py_DECREF(kargs);
 	R ret;
 }
-# define K_call K_call_any
 
 static int
 k_ktype(int typekind, int itemsize)
