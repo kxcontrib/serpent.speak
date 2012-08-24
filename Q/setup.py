@@ -83,7 +83,7 @@ class build(_build):
             self.build_qlib = os.path.join(self.build_base,
                                            'qlib' + plat_specifier)
         qarch = self.distribution.qarch
-        kxver = self.distribution.kxver[0]
+        kxver = self.distribution.kxver
         if self.build_qext is None:
             self.build_qext = os.path.join(self.build_base,
                                            'qext.%s-%s' % (qarch, kxver))
@@ -185,7 +185,7 @@ class build_ext(_build_ext):
         filename = _build_ext.get_ext_filename(self, ext_name)
         so_ext = get_config_var('SO')
         kxver = self.distribution.kxver
-        return filename[:-len(so_ext)] + kxver[0] + so_ext
+        return filename[:-len(so_ext)] + kxver.replace('.', '_') + so_ext
 
 class build_qext(_build_ext):
     description = "build Q extension modules"
