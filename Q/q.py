@@ -75,6 +75,16 @@ if QVER is None:
     raise NotImplementedError("loading q in stock python is not implemented")
 _k = __import__('_k' + QVER.replace('.', '_')) 
 from datetime import datetime, date, time, timedelta
+
+# Starting with version 3.0, q default integer type is 64 bit.  Thus
+# '1' now means '1j' rather than '1i'.  This messes up doctests. To
+# fix this problem, _ij dict is introduced below.
+if QVER[0] >= '3':
+    _ij = dict(i='i', j='')
+else:
+    _ij = dict(i='', j='j')
+
+
 kerr = _k.error
 class K_call_proxy:
     def __get__(self, obj, objtype):
@@ -124,7 +134,7 @@ class K(_k.K):
 
     Array protocol:
     >>> ','.join([k(x).__array_typestr__
-    ...  for x in ('0b;0x00;0h;0;0j;0e;0.0;" ";`;2000.01m;2000.01.01;'
+    ...  for x in ('0b;0x00;0h;0i;0j;0e;0.0;" ";`;2000.01m;2000.01.01;'
     ...            '2000.01.01T00:00:00.000;00:00;00:00:00;00:00:00.000')
     ...  .split(';')])"""
     __doc__ += """
@@ -154,7 +164,7 @@ class K(_k.K):
     >>> asarray(k("0 1 2h"))
     array([0, 1, 2], dtype=int16)
 
-    >>> asarray(k("0 1 2"))
+    >>> asarray(k("0 1 2i"))
     array([0, 1, 2]{i_dtype})
 
     >>> asarray(k("0 1 2j"))
@@ -212,7 +222,7 @@ class K(_k.K):
 
     Atoms:
     >>> K._kb(True), K._kg(5), K._kh(42), K._ki(-3), K._kj(2**40), K._ke(3.5)
-    (k('1b'), k('0x05'), k('42h'), k('-3'), k('1099511627776j'), k('3.5e'))
+    (k('1b'), k('0x05'), k('42h'), k('-3{i}'), k('1099511627776{j}'), k('3.5e'))
 
     >>> K._kf(1.0), K._kc('x'), K._ks('xyz')
     (k('1f'), k('"x"'), k('`xyz'))
@@ -231,7 +241,7 @@ class K(_k.K):
     >>> K._ktd(t)
     k('+`a`b!(1 2 3;10 20 30)')
 
-    """
+    """.format(**_ij)
     # Lighten the K objects by preventing the automatic creation of
     # __dict__ and __weakref__ for each instance.
     __slots__ = ()
@@ -424,16 +434,16 @@ class K(_k.K):
     __doc__ += """
     Q objects can be used in Python arithmetic expressions
 
-    >>> x,y,z = map(K, (1,2,3))
+    >>> x,y,z = map(K._ki, (1,2,3))
     >>> print x + y, x * y, z/y, x|y, x&y, abs(-z)
-    3 2 1.5 2 1 3
+    3{i} 2{i} 1.5 2{i} 1{i} 3{i}
 
     Mixing Q objects with python numbers is allowed
     >>> 1/q('1 2 4')
     k('1 0.5 0.25')
     >>> q.til(5)**2
     k('0 1 4 9 16f')
-    """
+    """.format(**_ij)
 
 for spec, verb in [('add', '+'), ('sub', '-'), ('mul', '*'), ('pow', 'xexp'),
                    ('div', '%'), ('rdiv', '{y%x}'), ('and', '&'), ('or', '|'),
@@ -471,7 +481,7 @@ class _Q(object):
 
 __doc__ += """
 Q variables can be accessed a attributes of the 'q' object:
->>> q.test = q('([]a:1 2;b:`x`y)')
+>>> q.test = q('([]a:1 2i;b:`x`y)')
 >>> sum(q.test.a)
 3
 >>> del q.test
@@ -524,21 +534,26 @@ def show(x, start=0, output=None, geometry=None):
     output.write(buffer(S(geometry,start,x)))
 
 def inttok(x):
-    """converts python int to k
-
-    >>> inttok(2**40)
-    k('1099511627776j')
-    >>> inttok(42)
-    k('42')
-    >>> inttok(2**65)
-    Traceback (most recent call last):
-    ...
-    OverflowError: long too big to convert
-    """
     try:
         return K._ki(x)
     except OverflowError:
         return K._kj(x)
+
+__doc__ += """
+Converters
+----------
+
+inttok converts python int to k
+
+>>> inttok(2**40)
+k('1099511627776{j}')
+>>> inttok(42)
+k('42{i}')
+>>> inttok(2**65)
+Traceback (most recent call last):
+...
+OverflowError: long too big to convert
+""".format(**_ij)
 
 
 datetimetok = K._kzz
@@ -570,40 +585,45 @@ k('12:30:00.999')
 def _ni(x): raise NotImplementedError
 _X = {str:K._S, int:K._I, float:K._F, date:_ni, time:_ni, datetime:_ni}
 def listtok(x):
-    """converts python list to k
-
-    >>> listtok([])
-    k('()')
-    
-    Type is determined by the type of the first element of the list
-    >>> listtok(list("abc"))
-    k('`a`b`c')
-    >>> listtok([1,2,3])
-    k('1 2 3')
-    >>> listtok([0.5,1.0,1.5])
-    k('0.5 1 1.5')
-
-    All elements must have the same type for conversion
-    >>> listtok([0.5,'a',5])
-    Traceback (most recent call last):
-      ...
-    TypeError: K._F: 2-nd item is not an int
-    
-    """
     if x:
         return _X[type(x[0])](x)
     return K._ktn(0,0)
+__doc__ += """
+listtok converts python list to k
 
-def tupletok(x):
-    """converts python tuple to k
+>>> listtok([])
+k('()')
 
-    Tuples are converted to general lists, strings in tuples are
-    converted to char lists.
+Type is determined by the type of the first element of the list
+>>> listtok(list("abc"))
+k('`a`b`c')
+>>> listtok([1,2,3])
+k('1 2 3{i}')
+>>> listtok([0.5,1.0,1.5])
+k('0.5 1 1.5')
 
-    >>> tupletok((kp("insert"), 't', (1, "abc")))
-    k('("insert";`t;(1;`abc))')
-    """
-    return K._K(K(i) for i in x)
+All elements must have the same type for conversion
+>>> listtok([0.5,'a',5])
+Traceback (most recent call last):
+  ...
+TypeError: K._F: 2-nd item is not an int
+
+""".format(**_ij)
+
+
+
+tupletok = lambda x: K._K(K(i) for i in x)
+
+__doc__ += """
+tupletok converts python tuple to k
+
+Tuples are converted to general lists, strings in tuples are
+converted to char lists.
+
+>>> tupletok((kp("insert"), 't', (1, "abc")))
+k('("insert";`t;(1{i};`abc))')
+""".format(**_ij)
+
     
 kp = K._kp
 
@@ -664,28 +684,29 @@ else:
     >>> K._from_array_interface(array([1, 2, 3], 'h').__array_struct__)
     k('1 2 3h')
     >>> K._from_array_interface(array([1, 2, 3], 'i').__array_struct__)
-    k('1 2 3')
+    k('1 2 3{i}')
     >>> K._from_array_interface(array([1, 2, 3], 'q').__array_struct__)
-    k('1 2 3j')
+    k('1 2 3{j}')
     >>> K._from_array_interface(array([1, 2, 3], 'f').__array_struct__)
     k('1 2 3e')
     >>> K._from_array_interface(array([1, 2, 3], 'd').__array_struct__)
     k('1 2 3f')
-    """
+    """.format(**_ij)
     __test__["array interface (scalar)"] ="""
     >>> K._from_array_interface(array(1, bool).__array_struct__)
     k('1b')
     >>> K._from_array_interface(array(1, 'h').__array_struct__)
     k('1h')
     >>> K._from_array_interface(array(1, 'i').__array_struct__)
-    k('1')
+    k('1{i}')
     >>> K._from_array_interface(array(1, 'q').__array_struct__)
-    k('1j')
+    k('1{j}')
     >>> K._from_array_interface(array(1, 'f').__array_struct__)
     k('1e')
     >>> K._from_array_interface(array(1, 'd').__array_struct__)
     k('1f')
-    """
+    """.format(**_ij)
+del _ij
 
 def _test():
     import doctest, sys
