@@ -247,7 +247,12 @@ K_a0(KObject *self)
 		Py_INCREF(self);
 		return (PyObject*)self;
 	}
-	R KObject_FromK(Py_TYPE(self), k(0, "@", r1(x), r1(k_none), (K)0));
+#if KXVER >= 3
+	static struct k0 empty = {0,0,0,0,1,0};
+#else
+	static struct k0 empty = {1,0,0};
+#endif
+	R KObject_FromK(Py_TYPE(self), dot(x, &empty));
 }
 static PyObject*
 K_a1(KObject *self, PyObject *arg)
