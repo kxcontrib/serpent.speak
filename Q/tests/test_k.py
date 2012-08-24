@@ -68,6 +68,10 @@ class AtomTestCase(K_TestCase):
     def test_kt(self):
         self.assert_k_is(kt(1), '00:00:00.001')
 
+    def test_id(self):
+        x, y = ki(1), ki(1)
+        self.assertNotEqual(x._id(), y._id())
+
 class ListTestCase(K_TestCase):
     def test_kp(self):
         self.assert_k_is(kp("abc"), '"abc"')

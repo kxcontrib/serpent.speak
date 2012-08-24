@@ -1500,7 +1500,7 @@ K_func(PyTypeObject *type, PyObject *func)
 }
 
 PyDoc_STRVAR(K_id_doc,
-	     "x._id(k) -> id of k object\n"
+	     "x._id() -> id of k object\n"
 	     "\n");
 static PyObject *
 K_id(KObject *self)
