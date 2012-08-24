@@ -232,8 +232,8 @@ static PyObject*
 K_dot(KObject *self, PyObject *args)
 {
 	R K_Check(args)
-		? KObject_FromK(Py_TYPE(self), 
-				k(0, ".", r1(self->x), r1(((KObject*)args)->x), (K)0))
+		? KObject_FromK(Py_TYPE(self),
+				dot(self->x, ((KObject*)args)->x))
 		: PyErr_Format(PyExc_TypeError, "expected a K object, not %s",
 			       Py_TYPE(args)->tp_name);
 }
