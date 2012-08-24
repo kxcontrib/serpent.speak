@@ -62,17 +62,18 @@ Input/Output
 'xyz'
 >>> os.close(r); os.close(w)
 """
-__version__='$Revision: 1.35 $'
+__version__='3.1.0'
 __metaclass__ = type
-import sys
-if sys.executable.endswith('python'):
-    raise NotImplementedError("loading q in stock python is not implemented")
-del sys
 import os
-# If QVER environment variable is set - append the first digit to the
-# _k extension module name.
-_k = __import__('_k' + os.environ.get('QVER', [''])[0])
+QVER = os.environ.get('QVER')
 del os
+
+# Q sets QVER environment variable to communicate its version info to
+# python. If it is not set - most likely you are attempting to run
+# q.py under regular python.
+if QVER is None:
+    raise NotImplementedError("loading q in stock python is not implemented")
+_k = __import__('_k' + QVER.replace('.', '_')) 
 from datetime import datetime, date, time, timedelta
 kerr = _k.error
 class K_call_proxy:
