@@ -641,8 +641,12 @@ converters = {
     list: listtok,
     tuple: tupletok,
     type(lambda:0): K._func,
-    buffer: K._kp
+    bytes: K._kp
     }
+try:
+    converters[buffer] = K._kp
+except NameError:
+    pass
 try:
     converters[timedelta] = K._knz
 except AttributeError:

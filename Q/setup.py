@@ -128,6 +128,12 @@ class build_qk(Command):
             self.qpath_rule = (0, '#!', "#! %s\n" % qpath)
         else:
             self.qpath_rule = (0, '#!', "")
+        self.q_module_rules =  [self.qpath_rule, self.pyver_rule]
+        soabi = get_config_var('SOABI')
+        if soabi:
+           self.q_module_rules.append(((None, 'PYSO:',
+                                        'PYSO: `$"py.%s"\n' % soabi)))
+
 
     def run(self):
         self.mkpath(self.build_lib)
@@ -145,8 +151,7 @@ class build_qk(Command):
                           [self.pyver_rule])
 
     def build_q_module(self, infile, outfile):
-        self.build_module(infile, outfile,
-                          [self.qpath_rule, self.pyver_rule])
+        self.build_module(infile, outfile, self.q_module_rules)
         # copy executable flags
         inmode = os.stat(infile).st_mode
         if inmode & 0o111:
@@ -428,6 +433,8 @@ class Distribution(_Distribution):
         for ext in self.ext_modules + self.qext_modules:
             ext.define_macros.append(('KXVER', self.kxver[0]))
             ext.define_macros.append(('QVER', self.kxver.replace('.', '_')))
+            if sys.hexversion >= 0x3000000:
+               ext.define_macros.append(('PY3K', '1'))
 
 
 ###############################################################################
