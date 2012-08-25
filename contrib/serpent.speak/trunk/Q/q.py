@@ -90,7 +90,7 @@ class K_call_proxy:
     def __get__(self, obj, objtype):
         if obj is None:
             return self
-        if obj.inspect('t') == 100:
+        if obj.inspect(b't') == 100:
             return obj._call_lambda
         return obj._call
 
@@ -318,7 +318,7 @@ class K(_k.K):
         >>> q("([a:1 2 3]b:10 20 30)").b
         k('10 20 30')
         """
-        t = self.inspect('t')
+        t = self.inspect(b't')
         if t == 98:
             return self._k(0, '{x`%s}'%a, self)
         if t == 99:
@@ -331,7 +331,7 @@ class K(_k.K):
         >>> map(int, map(q, '1b 2h 3 4e `5 6.0 2000.01.08'.split()))
         [1, 2, 3, 4, 5, 6, 7]
         """
-        t = self.inspect('t')
+        t = self.inspect(b't')
         return int(self.inspect(fields[-t]))
 
     def __float__(self):
@@ -340,15 +340,15 @@ class K(_k.K):
         >>> map(float, map(q, '1b 2h 3 4e `5 6.0 2000.01.08'.split()))
         [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
         """
-        t = self.inspect('t')
+        t = self.inspect(b't')
         return float(self.inspect(fields[-t]))
 
     def __nonzero__(self):
-        t = self.inspect('t')
+        t = self.inspect(b't')
         if t < 0:
             return self.inspect(fields[-t]) != 0
         else:
-            return self.inspect('n') > 0
+            return self.inspect(b'n') > 0
 
     def __eq__(self, other):
         """
@@ -381,9 +381,9 @@ class K(_k.K):
         3
         """
 
-        t = self.inspect('t')
+        t = self.inspect(b't')
         if 0 <= t < 98:
-            return self.inspect('n')
+            return self.inspect(b'n')
         if t in (98,99):
             return int(self._k(0, 'count', self))
         raise NotImplementedError
@@ -397,7 +397,7 @@ class K(_k.K):
         >>> 'abc' not in q('(1;2.0;`abc)')
         False
         """
-        if self.inspect('t'):
+        if self.inspect(b't'):
             x = q('in', item, self)
         else:
             x = q('{sum x~/:y}', item, self)
