@@ -1,8 +1,11 @@
 import unittest
 from q import _k
 from datetime import datetime, date, time, timedelta
-# extract _k.K class methods
 
+import sys
+PY3K = sys.hexversion >= 0x3000000
+
+# extract _k.K class methods
 for m in ('func k knk ktd err'
           ' ka kb kg kh ki kj ke kf kc ks km kd kz ku kv kt kp'
           ' kdd ktt kzz knz kpz'
@@ -179,7 +182,7 @@ class IterTestCase(K_TestCase):
     if KXVER >= 3:
         def test_guid(self):
             s = '0x16151413121110090807060504030201'
-            l = long(s, 16)
+            l = int(s, 16)
             self.assert_k_is(kguid(l), '0x0 sv ' + s)
             self.assertEqual([l], list(k(0, 'enlist 0x0 sv ' + s)))
 
@@ -307,7 +310,10 @@ class ErrorTestCase(unittest.TestCase):
 class ArrayStructTestCase(unittest.TestCase):
     def test_type(self):
         s = q('1 2 3').__array_struct__
-        self.assertEqual(type(s).__name__, 'PyCObject')
+        if PY3K:
+            self.assertEqual(type(s).__name__, 'PyCapsule')
+        else:
+            self.assertEqual(type(s).__name__, 'PyCObject')
 
     def test_error(self):
         x = q('()!()')
