@@ -641,8 +641,10 @@ converters = {
     list: listtok,
     tuple: tupletok,
     type(lambda:0): K._func,
-    bytes: K._kp
     }
+if bytes is not str:
+    converters[bytes] = K._kp
+
 try:
     converters[buffer] = K._kp
 except NameError:
