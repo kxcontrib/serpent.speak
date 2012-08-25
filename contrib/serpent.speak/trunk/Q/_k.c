@@ -717,21 +717,31 @@ K_err(PyTypeObject *type, PyObject *args)
 	Py_RETURN_NONE;
 }
 
+
+PyDoc_STRVAR(K_ka_doc,"returns a K atom");
+static PyObject *
+K_ka(PyTypeObject *type, PyObject *args)
+{
+	H t; J j;
+	if (!PyArg_ParseTuple(args, "hL:K._ka", &t, &j))
+		return NULL;
+	K x = ka(t);
+	xj = j;
+	return KObject_FromK(type, x);
+}
+
 #define K_ATOM(a, T, t, doc)					\
 	PyDoc_STRVAR(K_k##a##_doc, doc);			\
 	static PyObject *					\
 	K_k##a(PyTypeObject *type, PyObject *args)		\
 	{							\
 		T g;						\
-		if (!PyArg_ParseTuple(args, #t ":K.k"#a, &g))	\
+		if (!PyArg_ParseTuple(args, #t ":K._k"#a, &g))	\
 			return NULL;				\
 		K x = k##a(g);					\
-		if (!type) {					\
-			type = &K_Type;				\
-		}						\
 		return KObject_FromK(type, x);			\
-	}			
-K_ATOM(a, I, i, "returns a K atom")
+	}
+
 K_ATOM(b, G, b, "returns a K bool")
 K_ATOM(g, G, b, "returns a K byte")
 K_ATOM(h, H, h, "returns a K short")
