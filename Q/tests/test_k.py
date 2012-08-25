@@ -11,17 +11,17 @@ for m in ('func k knk ktd err'
 del m
 q = lambda *args: k(0,*args)
 q("\\e 0") # disable q's debug on error
-KXVER=int(q('.Q.k').inspect('f'))
+KXVER=int(q('.Q.k').inspect(b'f'))
 if KXVER >= 3:
     kguid = _k.K._kguid
 
 
 def kstr(x):
-    return k(0, '-3!', x).inspect('s')
+    return k(0, '-3!', x).inspect(b's')
 
 class K_TestCase(unittest.TestCase):
     def assert_k_is(self, x, y):
-        test = k(0, '~[%s;]' % y, x).inspect('g')
+        test = k(0, '~[%s;]' % y, x).inspect(b'g')
         if not test:
             raise self.failureException(kstr(x) + ' <> ' + y)
 
@@ -47,7 +47,7 @@ class AtomTestCase(K_TestCase):
     def test_kf(self):
         self.assert_k_is(kf(1), '1f')
     def test_kc(self):
-        self.assert_k_is(kc('x'), '"x"')
+        self.assert_k_is(kc(b'x'), '"x"')
     def test_ks(self):
         self.assert_k_is(ks('abc'), '`abc')
     def test_km(self):
@@ -110,61 +110,63 @@ class TableDictTestCase(K_TestCase):
 
 class IterTestCase(K_TestCase):
     def test_bool(self):
-        self.failUnlessEqual(list(k(0,'101b')), [True, False, True])
+        self.assertEqual(list(k(0,'101b')), [True, False, True])
 
     def test_byte(self):
-        self.failUnlessEqual(list(k(0,'0x010203')), [1,2,3])
+        self.assertEqual(list(k(0,'0x010203')), [1,2,3])
 
     def test_char(self):
-        self.failUnlessEqual(list(kp('abc')), ['a','b','c'])
+        self.assertEqual(list(kp('abc')), ['a','b','c'])
 
     def test_short(self):
-        self.failUnlessEqual(list(k(0, '1 2 3h')), [1, 2, 3])
+        self.assertEqual(list(k(0, '1 2 3h')), [1, 2, 3])
 
     def test_int(self):
         l = [1,2,3,None]
-        self.failUnlessEqual(list(I(l)), l)
+        self.assertEqual(list(I(l)), l)
 
     def test_long(self):
-        self.failUnlessEqual(list(k(0, '1 2 3j')), [1, 2, 3])
+        self.assertEqual(list(k(0, '1 2 3j')), [1, 2, 3])
 
     def test_date(self):
-        self.failUnlessEqual(list(k(0, '"d"$0 1 2')),[date(2000,1,d) for d in [1, 2, 3]])
-        self.failUnlessEqual(list(k(0, '-0W 0N 0Wd')),[date(1,1,1), None, date(9999,12,31),])
+        self.assertEqual(list(k(0, '"d"$0 1 2')),[date(2000,1,d) for d in [1, 2, 3]])
+        self.assertEqual(list(k(0, '-0W 0N 0Wd')),[date(1,1,1), None, date(9999,12,31),])
 
     def test_month(self):
-        self.failUnlessEqual(list(k(0, '"m"$0 1 2')),[date(2000,m,1) for m in [1, 2, 3]])
-        self.failUnlessEqual(list(k(0, '-0W 0N 0Wm')),[date(1,1,1), None, date(9999,12,1),])
+        self.assertEqual(list(k(0, '"m"$0 1 2')),[date(2000,m,1) for m in [1, 2, 3]])
+        self.assertEqual(list(k(0, '-0W 0N 0Wm')),[date(1,1,1), None, date(9999,12,1),])
                              
     def test_datetime(self):
-        self.failUnlessEqual(list(k(0, '"z"$0.5 1.5 2.5')),[datetime(2000,1,d,12) for d in [1, 2, 3]])
-        self.failUnlessEqual(list(k(0, '-0w 0n 0wz')),[datetime(1,1,1), None,
+        self.assertEqual(list(k(0, '"z"$0.5 1.5 2.5')),[datetime(2000,1,d,12) for d in [1, 2, 3]])
+        self.assertEqual(list(k(0, '-0w 0n 0wz')),[datetime(1,1,1), None,
                                                        datetime(9999,12,31,23,59,59,999999),])
         
     def test_time(self):
-        self.failUnlessEqual(list(k(0, '"t"$0 1 2 0N')),[time(0,0,0,m*1000) for m in range(3)]+[None])
+        self.assertEqual(list(k(0, '"t"$0 1 2 0N')),[time(0,0,0,m*1000) for m in range(3)]+[None])
 
     def test_minute(self):
-        self.failUnlessEqual(list(k(0, '"u"$0 1 2 0N')),[time(0,m,0) for m in range(3)]+[None])
+        self.assertEqual(list(k(0, '"u"$0 1 2 0N')),[time(0,m,0) for m in range(3)]+[None])
 
     def test_second(self):
-        self.failUnlessEqual(list(k(0, '"v"$0 1 2')),[time(0,0,s) for s in range(3)])
+        self.assertEqual(list(k(0, '"v"$0 1 2')),[time(0,0,s) for s in range(3)])
 
     def test_symbol(self):
         l = ['a', 'b', 'c']
-        self.failUnlessEqual(list(S(l)), l)
+        self.assertEqual(list(S(l)), l)
 
     def test_float(self):
         l = [1.2, 2.3, 3.4]
-        self.failUnlessEqual(list(F(l)), l)
+        self.assertEqual(list(F(l)), l)
 
     def test_generic(self):
         l = kf(1.2), ki(2), ks('xyz')
-        self.failUnlessEqual(map(kstr, K(l)), map(kstr, l))
+        self.assertEqual([kstr(x) for x in K(l)],
+                         [kstr(x) for x in l])
+
 
     def test_dict(self):
         d = k(0, '`a`b`c!1 2 3')
-        self.failUnlessEqual(list(d), list('abc'))
+        self.assertEqual(list(d), list('abc'))
 
     def test_table(self):
         t = k(0, '([]a:`X`Y`Z;b:"xyz";c:1 2 3)')
@@ -208,40 +210,41 @@ class CallsTestCase(K_TestCase):
 class StrTestCase(K_TestCase):
     def test_pass(self):
         x = 'abc'
-        self.failUnlessEqual(str(ks(x)), x)
-        self.failUnlessEqual(str(kp(x)), x)
-        x = 'a'
-        self.failUnlessEqual(str(kc(x)), x)
+        self.assertEqual(str(ks(x)), x)
+        self.assertEqual(str(kp(x)), x)
+        x = b'a'
+        self.assertEqual(str(kc(x)), x.decode())
 
     def test_misc(self):
-        self.failUnlessEqual(str(kb(1)), '1b')
-        self.failUnlessEqual(str(kh(1)), '1h')
+        self.assertEqual(str(kb(1)), '1b')
+        self.assertEqual(str(kh(1)), '1h')
         if KXVER >= 3:
-            self.failUnlessEqual(str(ki(1)), '1i')
-            self.failUnlessEqual(str(kj(1)), '1')
+            self.assertEqual(str(ki(1)), '1i')
+            self.assertEqual(str(kj(1)), '1')
         else:
-            self.failUnlessEqual(str(ki(1)), '1')
-            self.failUnlessEqual(str(kj(1)), '1j')
-        self.failUnlessEqual(str(kf(1)), '1f')
+            self.assertEqual(str(ki(1)), '1')
+            self.assertEqual(str(kj(1)), '1j')
+        self.assertEqual(str(kf(1)), '1f')
         
 class ReprTestCase(unittest.TestCase):
     def test_pass(self):
         x = 'abc'
-        self.failUnlessEqual(repr(ks(x)), "k('`abc')")
-        self.failUnlessEqual(repr(kp(x)), "k('\"abc\"')")
-        x = 'a'
-        self.failUnlessEqual(repr(kc(x)), "k('\"a\"')")
+        self.assertEqual(repr(ks(x)), "k('`abc')")
+        x = b'abc'
+        self.assertEqual(repr(kp(x)), "k('\"abc\"')")
+        x = b'a'
+        self.assertEqual(repr(kc(x)), "k('\"a\"')")
 
     def test_misc(self):
-        self.failUnlessEqual(repr(kb(1)), "k('1b')")
-        self.failUnlessEqual(repr(kh(1)), "k('1h')")
+        self.assertEqual(repr(kb(1)), "k('1b')")
+        self.assertEqual(repr(kh(1)), "k('1h')")
         if KXVER >= 3:
-            self.failUnlessEqual(repr(ki(1)), "k('1i')")
-            self.failUnlessEqual(repr(kj(1)), "k('1')")
+            self.assertEqual(repr(ki(1)), "k('1i')")
+            self.assertEqual(repr(kj(1)), "k('1')")
         else:
-            self.failUnlessEqual(repr(ki(1)), "k('1')")
-            self.failUnlessEqual(repr(kj(1)), "k('1j')")
-        self.failUnlessEqual(repr(kf(1)), "k('1f')")
+            self.assertEqual(repr(ki(1)), "k('1')")
+            self.assertEqual(repr(kj(1)), "k('1j')")
+        self.assertEqual(repr(kf(1)), "k('1f')")
         
 class JoinTestCase(K_TestCase):
     def test_byte(self):
@@ -282,24 +285,24 @@ class JoinTestCase(K_TestCase):
 
     def test_str(self):
         x = q('"ab"')
-        x._ja('c')
+        x._ja(b'c')
         y = '"abc"'
         self.assert_k_is(x, y)
         
     def test_sym(self):
         x = q('`a`b')
-        x._ja('c')
+        x._ja(b'c')
         y = '`a`b`c'
         self.assert_k_is(x, y)
 
 class ErrorTestCase(unittest.TestCase):
     def test_simple(self):
-        self.failUnlessRaises(_k.error, q, "1+`")
-        self.failUnlessRaises(_k.error, q("1+"), ks(''))
-        self.failUnlessRaises(_k.error, q("+"), ki(1), ks(''))
+        self.assertRaises(_k.error, q, "1+`")
+        self.assertRaises(_k.error, q("1+"), ks(''))
+        self.assertRaises(_k.error, q("+"), ki(1), ks(''))
 
     def test_nested(self):
-        self.failUnlessRaises(_k.error, q, "{{{'`xyz}0}0}", ki(0))
+        self.assertRaises(_k.error, q, "{{{'`xyz}0}0}", ki(0))
 
 class ArrayStructTestCase(unittest.TestCase):
     def test_type(self):
@@ -328,7 +331,7 @@ else:
                 ('0j', "q", 8, 0),
                 ('0e', "f", 4, 0.0),
                 ('0f', "d", 8, 0.0),
-                ('" "', "c", 1, ' '),
+                ('" "', "c", 1, b' '),
                 ('2000.01m', "i", 4, 0),
                 ('2000.01.01', "i", 4, 0),
                 ('2000.01.01T00:00', "d", 8, 0),
