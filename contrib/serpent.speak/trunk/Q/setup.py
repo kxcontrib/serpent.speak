@@ -120,8 +120,9 @@ class build_qk(Command):
         # options -- list of Q/K modules.
         self.q_modules = self.distribution.q_modules
         self.k_modules = self.distribution.k_modules
+        pyver = sys.version[0:3] + getattr(sys, 'abiflags', '')
         self.pyver_rule = (None, 'PYVER:',
-                           'PYVER: "%s"\n' % sys.version[0:3])
+                           'PYVER: "%s"\n' % pyver)
         qpath = self.distribution.qexecutable
         if self.distribution.kxver >= '2.3':
             self.qpath_rule = (0, '#!', "#! %s\n" % qpath)
