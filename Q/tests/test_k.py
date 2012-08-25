@@ -26,6 +26,11 @@ class K_TestCase(unittest.TestCase):
             raise self.failureException(kstr(x) + ' <> ' + y)
 
 class AtomTestCase(K_TestCase):
+    def test_ka(self):
+        self.assert_k_is(ka(-_k.KB, 1), '1b')
+        self.assert_k_is(ka(-_k.KJ, 1), '1j')
+    def test_kb(self):
+        self.assert_k_is(kb(1), '1b')
     def test_kb(self):
         self.assert_k_is(kb(1), '1b')
     def test_kg(self):
