@@ -54,12 +54,6 @@ static char __version__[] = "$Revision$";
 #include <math.h>
 #include <stddef.h>
 
-/* Macrobatics */
-#define CAT(x, y) x##y
-#define XCAT(x, y) CAT(x, y)
-#define SCAT(x, y) (x #y)
-#define XSCAT(x, y) SCAT(x, y)
-
 /* vvv Python 2.5 compatibility vvv */
 #ifndef Py_TYPE
 #define Py_TYPE(ob) (((PyObject*)(ob))->ob_type)
@@ -102,7 +96,7 @@ PY_STR_AsStringAndSize(PyObject* obj, char **str, Py_ssize_t *size)
 
 #    define MOD_ERROR_VAL NULL
 #    define MOD_SUCCESS_VAL(val) val
-#    define MOD_INIT(name) PyMODINIT_FUNC XCAT(PyInit_##name, QVER)(void)
+#    define MOD_INIT(name) PyMODINIT_FUNC PyInit_##name(void)
 #    define MOD_DEF(ob, name, doc, methods)			  \
 	static struct PyModuleDef moduledef = {			  \
 		PyModuleDef_HEAD_INIT, name, doc, -1, methods, }; \
@@ -121,7 +115,7 @@ PY_STR_AsStringAndSize(PyObject* obj, char **str, Py_ssize_t *size)
 
 #    define MOD_ERROR_VAL
 #    define MOD_SUCCESS_VAL(val)
-#    define MOD_INIT(name) void XCAT(init##name, QVER)(void)
+#    define MOD_INIT(name) void init##name(void)
 #    define MOD_DEF(ob, name, doc, methods)		\
 	ob = Py_InitModule3(name, methods, doc);
 #endif  /* PY_MAJOR_VERSION >= 3 */
@@ -238,8 +232,8 @@ static PyObject*
 K_dot(KObject *self, PyObject *args)
 {
 	R K_Check(args)
-		? KObject_FromK(Py_TYPE(self),
-				dot(self->x, ((KObject*)args)->x))
+		? KObject_FromK(Py_TYPE(self), 
+				k(0, ".", r1(self->x), r1(((KObject*)args)->x), (K)0))
 		: PyErr_Format(PyExc_TypeError, "expected a K object, not %s",
 			       Py_TYPE(args)->tp_name);
 }
@@ -253,12 +247,7 @@ K_a0(KObject *self)
 		Py_INCREF(self);
 		return (PyObject*)self;
 	}
-#if KXVER >= 3
-	static struct k0 empty = {0,0,0,0,1};
-#else
-	static struct k0 empty = {1,0,0};
-#endif
-	R KObject_FromK(Py_TYPE(self), dot(x, &empty));
+	R KObject_FromK(Py_TYPE(self), k(0, "@", r1(x), r1(k_none), (K)0));
 }
 static PyObject*
 K_a1(KObject *self, PyObject *arg)
@@ -560,7 +549,7 @@ K_array_typestr_get(KObject *self)
 }
 static PyObject *K_K(PyTypeObject *type, PyObject *arg);
 static PyObject *
-K_call(KObject *self, PyObject *args)
+K_call_any(KObject *self, PyObject *args)
 {
 	PyObject *ret, *kargs;
 	switch (PyTuple_GET_SIZE(args)) {
@@ -576,6 +565,7 @@ K_call(KObject *self, PyObject *args)
 	Py_DECREF(kargs);
 	R ret;
 }
+# define K_call K_call_any
 
 static int
 k_ktype(int typekind, int itemsize)
@@ -1461,30 +1451,25 @@ K_inspect(PyObject *self, PyObject *args)
 ZK
 call_python_object(K type, K func, K x)
 {
-	PyObject *tup, *res;
-	K *pk, r;
+	I n; K *args, r;
 	if (type->t!=-KJ||func->t!=-KJ||xt<0||xt>=XT) {
 		R krr("type error");
 	}
+	n = xn; r1(x);
 	if (xt != 0) {
 		x = k(0, "(::),", x, (K)0);
-		pk = xK+1;
+		args = xK+1;
 	}
 	else {
-		pk = xK;
-	}
-	tup = PyTuple_New(xn);
-	if (tup == NULL)
-		return NULL;
-	DO(xn, PyTuple_SET_ITEM(tup, i, 
-			       KObject_FromK((PyTypeObject*)type->k,r1(pk[i]))));
-	res = PyObject_CallObject((PyObject*)func->k, tup);
-	Py_DECREF(tup);
-	if (res == NULL) {
-		/* XXX: Exception details should be passed back to q. */
-		PyErr_Print();
+		args = xK;
+	}	
+	PyObject* pyargs = PyTuple_New(n), *res;
+	DO(n, PyTuple_SET_ITEM(pyargs, i, 
+			       KObject_FromK((PyTypeObject*)type->k,r1(args[i]))));
+	res = PyObject_CallObject((PyObject*)func->k, pyargs);
+	Py_DECREF(pyargs); r0(x);
+	if(!res)
 		R krr("error in python");
-	}
 	r = K_Check(res)
 		? r1(((KObject*)res)->x)
 		: krr("py-type error");
@@ -1515,7 +1500,7 @@ K_func(PyTypeObject *type, PyObject *func)
 }
 
 PyDoc_STRVAR(K_id_doc,
-	     "x._id() -> id of k object\n"
+	     "x._id(k) -> id of k object\n"
 	     "\n");
 static PyObject *
 K_id(KObject *self)
@@ -2062,8 +2047,12 @@ static PyTypeObject KObjectIter_Type = {
 	0,					/* tp_methods */
 };
 
-/* Initialization function for the module */
-MOD_INIT(_k)
+/* Initialization function for the module (*must* be called init_k + KXVER) */
+#define CAT(x, y) x##y
+#define SCAT(x, y) (x #y)
+#define XSCAT(x, y) SCAT(x, y)
+#define modname CAT(_k, QVER))
+MOD_INIT(modname)
 {
 	PyObject *m;
 	/* PyObject* c_api_object; */
