@@ -552,29 +552,6 @@ def show(x, start=0, output=None, geometry=None):
     S = q('{` sv .Q.S[x;y;z]}')
     output.write(buffer(S(geometry,start,x)))
 
-def inttok(x):
-    try:
-        return K._ki(x)
-    except OverflowError:
-        return K._kj(x)
-
-__doc__ += """
-Converters
-----------
-
-inttok converts python int to k
-
->>> inttok(2**40)
-k('1099511627776{j}')
->>> inttok(42)
-k('42{i}')
->>> inttok(2**65)
-Traceback (most recent call last):
-...
-OverflowError: {long} too big to convert
-""".format(**_ij)
-
-
 datetimetok = K._kzz
 __doc__ += """
 datetimetok converts python datetime to k (DEPRECATED)
@@ -602,7 +579,8 @@ k('12:30:00.999')
 """
 
 def _ni(x): raise NotImplementedError
-_X = {str:K._S, int:K._I, float:K._F, date:_ni, time:_ni, datetime:_ni}
+_X = {str:K._S, int:(K._I if QVER[0] < 3 else K._J),
+      float:K._F, date:_ni, time:_ni, datetime:_ni}
 def listtok(x):
     if x:
         return _X[type(x[0])](x)
@@ -617,7 +595,7 @@ Type is determined by the type of the first element of the list
 >>> listtok(list("abc"))
 k('`a`b`c')
 >>> listtok([1,2,3])
-k('1 2 3{i}')
+k('1 2 3')
 >>> listtok([0.5,1.0,1.5])
 k('0.5 1 1.5')
 
@@ -627,7 +605,7 @@ Traceback (most recent call last):
   ...
 TypeError: K._F: 2-nd item is not an int
 
-""".format(**_ij)
+"""
 
 
 
@@ -640,8 +618,8 @@ Tuples are converted to general lists, strings in tuples are
 converted to char lists.
 
 >>> tupletok((kp("insert"), 't', (1, "abc")))
-k('("insert";`t;(1{i};`abc))')
-""".format(**_ij)
+k('("insert";`t;(1;`abc))')
+"""
 
     
 kp = K._kp
@@ -650,7 +628,7 @@ converters = {
     K: lambda x: x,
     type(None): lambda x: K._k(0, "::"),
     bool: K._kb,
-    int: inttok,
+    int: K._ki,
     float: K._kf,
     date: K._kdd,
     datetime: K._kzz,
@@ -660,6 +638,12 @@ converters = {
     tuple: tupletok,
     type(lambda:0): K._func,
     }
+try:
+    converters[long] = K._kj
+except NameError:
+    pass
+if QVER[0] >= 3:
+    converters[int] = K._kj
 if bytes is not str:
     converters[bytes] = K._kp
 try:

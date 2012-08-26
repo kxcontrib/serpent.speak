@@ -9,7 +9,7 @@ PY3K = sys.hexversion >= 0x3000000
 for m in ('func k knk ktd err'
           ' ka kb kg kh ki kj ke kf kc ks km kd kz ku kv kt kp'
           ' kdd ktt kzz knz kpz'
-          ' I F S K xT xD').split():
+          ' I J F S K xT xD').split():
     globals()[m] = getattr(_k.K, '_'+m)
 del m
 q = lambda *args: k(0,*args)
@@ -86,6 +86,9 @@ class ListTestCase(K_TestCase):
     def test_I(self):
         self.assert_k_is(I([]), '`int$()')
         self.assert_k_is(I([1,2]), '1 2i')
+    def test_J(self):
+        self.assert_k_is(J([]), '`long$()')
+        self.assert_k_is(J([1,2]), '1 2j')
     def test_F(self):
         self.assert_k_is(F([]), '`float$()')
         self.assert_k_is(F([1., 2.]), '1 2f')
