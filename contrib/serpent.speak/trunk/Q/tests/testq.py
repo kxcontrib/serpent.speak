@@ -3,6 +3,18 @@ from q import *
 q("\\e 0") # disable q's debug on error
 KXVER=int(q('.Q.k'))
 PY3K=str is not bytes
+
+class TestPickle(unittest.TestCase):
+    def test_roundtrip(self):
+        import pickle
+        data = ['1b', '1 2 3', '"abcde"',
+                '(([a:""]b:0#0);`;0h)']
+        for d in data:
+            x = q(d)
+            s = pickle.dumps(x)
+            y = pickle.loads(s)
+        self.assertEqual(x, y)
+
 class TestBuiltinConversions(unittest.TestCase):
     def test_none(self):
         self.assertEqual(K(None), q("::"))
@@ -47,8 +59,7 @@ class TestBuiltinConversions(unittest.TestCase):
         self.assertEqual(K([1.0, float('nan')]), q("1 0n"))
 
         self.assertEqual(K(['']), q("enlist`"))
-        self.assertEqual(K(['a', 'b'), q("`a`b"))
-
+        self.assertEqual(K(['a', 'b']), q("`a`b"))
 
     def test_tuple(self):
         self.assertEqual(K(()), q("()"))
@@ -90,6 +101,6 @@ class TestOrderedDict(unittest.TestCase):
             self.skipTest("no OrderedDict in collections")
         od = odict([('a', 1.0), ('b', 2.0)])
         self.assertEqual(K(od), q('`a`b!1 2f'))
-
+                             
 if __name__ == '__main__':
     unittest.main()

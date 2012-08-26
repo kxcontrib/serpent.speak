@@ -262,7 +262,7 @@ class K(_k.K):
     # Lighten the K objects by preventing the automatic creation of
     # __dict__ and __weakref__ for each instance.
     __slots__ = ()
-    def __new__(self, x):
+    def __new__(cls, x):
         tx = type(x)
         if tx is K:
             return x
@@ -274,6 +274,11 @@ class K(_k.K):
             return K._from_array_interface(array_struct)
         c = converters[tx]
         return c(x)
+
+    def __reduce_ex__(self, proto):
+        x = self._b9(-1, self)
+        b = memoryview(x).tobytes()
+        return (d9, (b,))
 
     def _call(self, *args):
         """call the k object
@@ -470,6 +475,11 @@ del spec, verb
 for spec in 'add sub mul pow and or mod'.split():
     setattr(K, '__r%s__' % spec, getattr(K, '__%s__' % spec))
 del spec
+
+def d9(x):
+    "like K._d9, but takes python bytes"
+    return K._d9(K._kp(x))
+
 
 fields = b" g@ ghijefgs iif iii"
 if PY3K:
