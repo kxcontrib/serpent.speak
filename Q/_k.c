@@ -59,6 +59,8 @@ static char __version__[] = "$Revision$";
 #define XCAT(x, y) CAT(x, y)
 #define SCAT(x, y) (x #y)
 #define XSCAT(x, y) SCAT(x, y)
+#define SCAT3(x, y, z) (x #y z)
+#define XSCAT3(x, y, z) SCAT3(x, y, z)
 
 /* vvv Python 2.5 compatibility vvv */
 #ifndef Py_TYPE
@@ -1823,7 +1825,7 @@ static PyObject *k_iter(KObject *o);
 
 static PyTypeObject K_Type = {
 	PyVarObject_HEAD_INIT(NULL, 0)
-	"_k.K",	         	/*tp_name*/
+	XSCAT3("_k", QVER, ".K"),	         	/*tp_name*/
 	sizeof(KObject),	/*tp_basicsize*/
 	0,			/*tp_itemsize*/
 	/* methods */
