@@ -28,6 +28,15 @@ if KXVER >= 3:
             from uuid import UUID
             u = UUID('cc165d74-88df-4973-8dd1-a1f2e0765a80')
             self.assertEqual(int(K(u)), u.int)
-        
+
+class TestOrderedDict(unittest.TestCase):
+    def test_conversion(self):
+        import collections
+        odict = getattr(collections, 'OrderedDict', None)
+        if odict is None:
+            self.skipTest("no OrderedDict in collections")
+        od = odict([('a', 1.0), ('b', 2.0)])
+        self.assertEqual(K(od), q('`a`b!1 2f'))
+
 if __name__ == '__main__':
     unittest.main()

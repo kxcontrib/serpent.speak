@@ -678,12 +678,28 @@ except AttributeError:
 ###############################################################################
 # Lazy addition of converters
 ###############################################################################
-import __builtin__
+lazy_converters = {'uuid': [('UUID', lambda u: K._kguid(u.int))],
+                   'collections': [('OrderedDict', lambda x:
+                                        q("{![;].(flip x)}",
+                                          K._K(K(i) for i in x.items())))]
+                   }
+import __builtin__, sys
+
+# If module is already loaded, register converters for its classes
+# right away.
+for name, pairs in lazy_converters.items():
+    mod = sys.modules.get(name)
+    if mod is not None:
+        for cname, conv in pairs:
+            converters[getattr(mod, cname)] = conv
+# Replace builtin import to add lazy registration logic
 _imp=__builtin__.__import__
 def __import__(name, *args, **kwds): 
     m = _imp(name, *args, **kwds)
-    if name == 'uuid':
-        converters[m.UUID] = lambda u: K._kguid(u.int)
+    pairs = lazy_converters.get(name)
+    if pairs is not None:
+        converters.update((getattr(m, cname), conv)
+                          for cname, conv in pairs)
     return m
 __builtin__.__import__ = __import__
 ###############################################################################
