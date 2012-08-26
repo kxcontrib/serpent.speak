@@ -46,6 +46,10 @@ class TestBuiltinConversions(unittest.TestCase):
         self.assertEqual(K([1.0, 2.0]), q("1 2f"))
         self.assertEqual(K([1.0, float('nan')]), q("1 0n"))
 
+        self.assertEqual(K(['']), q("enlist`"))
+        self.assertEqual(K(['a', 'b'), q("`a`b"))
+
+
     def test_tuple(self):
         self.assertEqual(K(()), q("()"))
         t = (False, 0, 0.0, '', kp(b''), date(2000,1,1))
