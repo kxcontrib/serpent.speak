@@ -769,7 +769,7 @@ K_I(PyTypeObject *type, PyObject *arg)
 		if (PyLong_Check(o)) {
 			item = PyLong_AsLong(o);
 			if (item == -1 && PyErr_Occurred())
-				return NULL;
+				goto error;
 		}
 		else {
 			if (o == Py_None)
@@ -794,6 +794,50 @@ K_I(PyTypeObject *type, PyObject *arg)
 	Py_DECREF(seq);
 	return ret;
 }
+
+PyDoc_STRVAR(K_J_doc,
+	     "returns a K long list");
+static PyObject *
+K_J(PyTypeObject *type, PyObject *arg)
+{
+	PyObject *ret = NULL;
+	PY_LONG_LONG item;
+	PyObject *seq = PySequence_Fast(arg, "K._J: not a sequence");
+	if (seq == NULL)
+		return NULL;
+	int i, n = PySequence_Fast_GET_SIZE(seq);
+	K x = ktn(KJ, n);
+	for (i = 0; i < n; ++i) {
+		PyObject *o = PySequence_Fast_GET_ITEM(seq, i);
+#if PY_MAJOR_VERSION < 3
+		if (PyInt_Check(o))
+			item = PyInt_AS_LONG(o);
+		else
+#endif
+		if (PyLong_Check(o)) {
+			item = PyLong_AsLongLong(o);
+			if (item == -1 && PyErr_Occurred())
+				goto error;
+		}
+		else {
+			if (o == Py_None)
+				item = nj;
+			else {
+				r0(x);
+				PyErr_Format(PyExc_TypeError,
+					     "K._J: %d-%s item is not an int", i+1, th(i+1));
+				goto error;
+			}
+		}
+		xJ[i] = item;
+	}
+	ret = KObject_FromK(type, x);
+ error:
+	Py_DECREF(seq);
+	return ret;
+}
+
+
 K_ATOM(j, J, L, "returns a K long (64 bits)")
 K_ATOM(e, E, f, "returns a K real (32 bits)")
 K_ATOM(f, F, d, "returns a K float (64 bits)")
@@ -1541,6 +1585,7 @@ K_methods[] = {
 	{"_kh",	(PyCFunction)K_kh, METH_VARARGS|METH_CLASS, K_kh_doc},
 	{"_ki",	(PyCFunction)K_ki, METH_VARARGS|METH_CLASS, K_ki_doc},
 	{"_I",	(PyCFunction)K_I, METH_O|METH_CLASS, K_I_doc},
+	{"_J",	(PyCFunction)K_J, METH_O|METH_CLASS, K_J_doc},
 	{"_kj",	(PyCFunction)K_kj, METH_VARARGS|METH_CLASS, K_kj_doc},
 	{"_ke",	(PyCFunction)K_ke, METH_VARARGS|METH_CLASS, K_ke_doc},
 	{"_kf",	(PyCFunction)K_kf, METH_VARARGS|METH_CLASS, K_kf_doc},
