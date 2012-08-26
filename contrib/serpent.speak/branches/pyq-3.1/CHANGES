@@ -1,0 +1,40 @@
+0.2
+
+Implemented iterator protocol.
+
+0.3
+
+- Added support for arrays of strings
+
+2007-03-30
+
+implemented K._ja
+
+
+2009-01-02
+
+- Use k(0, ..) instead of dot() and aN() to improve compatibility
+- Default to python 2.6
+- Improvements to q script.p
+- NUC: extra info on q errors 
+
+2009-10-23
+
+NUC: k3i
+K(None) => k("::")
+K(timedelta) => timespan
+
+2012-08-09
+
+- support both q 2.x and 3.x
+- better setup.py
+- release pyq-3.0.1 as a source archive
+
+2012-08-10
+
+- basic guid support
+
+2012-08-25
+
+- support Python 3.2
+- release pyq-3.1.0 as a source archive

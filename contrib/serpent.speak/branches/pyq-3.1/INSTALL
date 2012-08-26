@@ -1,0 +1,22 @@
+Pyq istallation is more involved than that of pyk because q is not
+available as a shared library.  In order to overcome this limitation
+pyq requires a python dynamic library that is loaded into the q
+interpreter.  This is "tail waging the dog" approach given that
+currently pyq does not support calling python from q, only q from
+python.
+
+Prerequisites:
+
+1. Q (http://kxdownloads.com)
+2. libpython2.x (tested with 2.6 and 2.7)
+3. GNU make, gcc
+
+On a linux system, running "python setup.py install" will install
+necessary python and q modules. On other systems installation of q
+modules will probably break. For manual installation, compile _k.c
+as a python module, py.c as a q module and copy files as follows:
+
+  py.so, p.so -> QHOME/OS
+  python.q, p.k -> QHOME
+  _k$KXVER.so, q.py -> PYTHONPATH
+
