@@ -52,22 +52,13 @@ k('2004.07.03T16:35:24.980')
 (k('2004.07.03'), k('16:35:24.980'))
 >>> K(timedelta(200,200,200))
 k('200D00:03:20.000200000')
-
-Input/Output
-
->>> import os
->>> r,w = os.pipe()
->>> h = K(w)(kp("xyz"))
->>> os.read(r, 100)
-'xyz'
->>> os.close(r); os.close(w)
 """
 __version__='3.1.0'
 __metaclass__ = type
 import os
 QVER = os.environ.get('QVER')
 del os
-
+PY3K = str is not bytes # don't want to import sys
 # Q sets QVER environment variable to communicate its version info to
 # python. If it is not set - most likely you are attempting to run
 # q.py under regular python.
@@ -78,11 +69,34 @@ from datetime import datetime, date, time, timedelta
 
 # Starting with version 3.0, q default integer type is 64 bit.  Thus
 # '1' now means '1j' rather than '1i'.  This messes up doctests. To
-# fix this problem, _ij dict is introduced below.
+# fix this problem, _ij dict is introduced below.  We use the same
+# mechanism to apply Py3K fixes.
 if QVER[0] >= '3':
     _ij = dict(i='i', j='')
 else:
     _ij = dict(i='', j='j')
+_ij['b'] = repr(bytes())[-3:-2] # 'b' in py3k, '' otherwise 
+_ij['long'] = long.__name__
+if PY3K:
+    _ij['_'] = ''
+    _ij['div'] = 'truediv'
+else:
+    def _print(*args):
+        for a in args:
+            print a,
+        print
+    _ij['_'] = '_'
+    _ij['div'] = 'div'
+__doc__ += """
+Input/Output
+
+>>> import os
+>>> r,w = os.pipe()
+>>> h = K(w)(kp("xyz"))
+>>> os.read(r, 100)
+{b}'xyz'
+>>> os.close(r); os.close(w)
+""".format(**_ij)
 
 
 kerr = _k.error
@@ -122,7 +136,9 @@ class K(_k.K):
     >>> def f(x, y):
     ...     return x + y
     >>> q('{[f]f(1;2)}', f)
-    k('3')
+    k('3')"""
+    if not PY3K:
+        __doc__ += """
 
     Buffer protocol:
     >>> x = kp('xxxxxx')
@@ -130,16 +146,17 @@ class K(_k.K):
     >>> os.write(w, 'abcdef') == os.fdopen(r).readinto(x)
     True
     >>> os.close(w); x
-    k('"abcdef"')
+    k('"abcdef"')"""
+    __doc__ += """
 
     Array protocol:
     >>> ','.join([k(x).__array_typestr__
     ...  for x in ('0b;0x00;0h;0i;0j;0e;0.0;" ";`;2000.01m;2000.01.01;'
     ...            '2000.01.01T00:00:00.000;00:00;00:00:00;00:00:00.000')
-    ...  .split(';')])"""
-    __doc__ += """
+    ...  .split(';')])
     '<b1,<u1,<i2,<i4,<i8,<f4,<f8,<S1,|O%d,<i4,<i4,<f8,<i4,<i4,<i4'
     """ % _k.SIZEOF_VOID_P
+
     try:
         import numpy
     except ImportError:
@@ -224,7 +241,7 @@ class K(_k.K):
     >>> K._kb(True), K._kg(5), K._kh(42), K._ki(-3), K._kj(2**40), K._ke(3.5)
     (k('1b'), k('0x05'), k('42h'), k('-3{i}'), k('1099511627776{j}'), k('3.5e'))
 
-    >>> K._kf(1.0), K._kc('x'), K._ks('xyz')
+    >>> K._kf(1.0), K._kc(b'x'), K._ks('xyz')
     (k('1f'), k('"x"'), k('`xyz'))
 
     >>> K._kd(0), K._kz(0.0), K._kt(0)
@@ -267,7 +284,8 @@ class K(_k.K):
 
         Strings are converted into symbols, use kp to convert to char
         vectors:
-        >>> map(k('{x}'), ('abc', kp('abc')))
+        >>> f = k('::')
+        >>> [f(x) for x in ('abc', kp('abc'))]
         [k('`abc'), k('"abc"')]
 
         """
@@ -328,7 +346,7 @@ class K(_k.K):
     def __int__(self):
         """converts K scalars to python int
 
-        >>> map(int, map(q, '1b 2h 3 4e `5 6.0 2000.01.08'.split()))
+        >>> [int(q(x)) for x in '1b 2h 3 4e `5 6.0 2000.01.08'.split()]
         [1, 2, 3, 4, 5, 6, 7]
         """
         t = self.inspect(b't')
@@ -337,7 +355,7 @@ class K(_k.K):
     def __float__(self):
         """converts K scalars to python float
 
-        >>> map(float, map(q, '1b 2h 3 4e `5 6.0 2000.01.08'.split()))
+        >>> [float(q(x)) for x in '1b 2h 3 4e `5 6.0 2000.01.08'.split()]
         [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
         """
         t = self.inspect(b't')
@@ -423,11 +441,10 @@ class K(_k.K):
         An elegant idiom to unpack q tables:
         >>> u = locals().update
         >>> for r in q('([]a:`x`y`z;b:1 2 3;c:"XYZ")'):
-        ...     u(r); print a, b, c
-        x 1 X
-        y 2 Y
-        z 3 Z
-                    
+        ...     u(r); a, b, c
+        (k('`x'), k('1'), k('"X"'))
+        (k('`y'), k('2'), k('"Y"'))
+        (k('`z'), k('3'), k('"Z"'))
         """
         return self._k(0, 'key', self)
     
@@ -435,7 +452,7 @@ class K(_k.K):
     Q objects can be used in Python arithmetic expressions
 
     >>> x,y,z = map(K._ki, (1,2,3))
-    >>> print x + y, x * y, z/y, x|y, x&y, abs(-z)
+    >>> {_}print(x + y, x * y, z/y, x|y, x&y, abs(-z))
     3{i} 2{i} 1.5 2{i} 1{i} 3{i}
 
     Mixing Q objects with python numbers is allowed
@@ -446,7 +463,7 @@ class K(_k.K):
     """.format(**_ij)
 
 for spec, verb in [('add', '+'), ('sub', '-'), ('mul', '*'), ('pow', 'xexp'),
-                   ('div', '%'), ('rdiv', '{y%x}'), ('and', '&'), ('or', '|'),
+                   (_ij['div'], '%'), ('r'+_ij['div'], '{y%x}'), ('and', '&'), ('or', '|'),
                    ('mod', 'mod'), ('pos', '+:'), ('neg', '-:'), ('abs', 'abs')]:
     setattr(K, '__%s__' % spec, K._k(0, verb))
 del spec, verb
@@ -454,7 +471,9 @@ for spec in 'add sub mul pow and or mod'.split():
     setattr(K, '__r%s__' % spec, getattr(K, '__%s__' % spec))
 del spec
 
-fields = " g@ ghijefgs iif iii"
+fields = b" g@ ghijefgs iif iii"
+if PY3K:
+    fields = [bytes([x]) for x in fields] 
 
 def k(m, *args):
     return K._k(0, 'k)'+m, *map(K, args))
@@ -552,7 +571,7 @@ k('42{i}')
 >>> inttok(2**65)
 Traceback (most recent call last):
 ...
-OverflowError: long too big to convert
+OverflowError: {long} too big to convert
 """.format(**_ij)
 
 
@@ -632,7 +651,6 @@ converters = {
     type(None): lambda x: K._k(0, "::"),
     bool: K._kb,
     int: inttok,
-    long: inttok,
     float: K._kf,
     date: K._kdd,
     datetime: K._kzz,
@@ -644,10 +662,14 @@ converters = {
     }
 if bytes is not str:
     converters[bytes] = K._kp
-
+try:
+    converters[long] = inttok
+except NameError:
+    pass
 try:
     converters[buffer] = K._kp
 except NameError:
+    buffer = str
     pass
 try:
     converters[timedelta] = K._knz
@@ -674,7 +696,7 @@ else:
     for typecode in "fislO":
         null[typecode] = K(Numeric.array([],typecode))[0]
     del typecode
-    converters[MA.array] = lambda(a): K(a.filled(null[a.typecode()]))
+    converters[MA.array] = lambda a: K(a.filled(null[a.typecode()]))
     # Make sure MA does not mess with array repr:
     MA.set_print_limit()
     del MA, Numeric
