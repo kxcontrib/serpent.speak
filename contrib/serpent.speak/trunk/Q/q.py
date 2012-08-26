@@ -589,7 +589,7 @@ k('12:30:00.999')
 """
 
 def _ni(x): raise NotImplementedError
-_X = {str:K._S, int:(K._I if QVER[0] < 3 else K._J),
+_X = {str:K._S, int:(K._I if QVER[0] < '3' else K._J),
       float:K._F, date:_ni, time:_ni, datetime:_ni}
 def listtok(x):
     if x:
@@ -652,7 +652,7 @@ try:
     converters[long] = K._kj
 except NameError:
     pass
-if QVER[0] >= 3:
+if QVER[0] >= '3':
     converters[int] = K._kj
 if bytes is not str:
     converters[bytes] = K._kp
