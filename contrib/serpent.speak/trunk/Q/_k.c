@@ -1442,6 +1442,33 @@ K_k(PyTypeObject *type, PyObject *args)
 	return KObject_FromK(type, r);
 }
 
+PyDoc_STRVAR(K_b9_doc,
+	     "b9(I, K) -> K byte vector\n"
+	     "\n"
+	     "serialize K object");
+static PyObject *
+K_b9(PyTypeObject *type, PyObject *args)
+{
+	I i; K x;
+	if (!PyArg_ParseTuple(args, "iO&:K._b9",
+			      &i, &getK, &x))
+		return NULL;
+	return KObject_FromK(type, b9(i, x));
+}
+
+PyDoc_STRVAR(K_d9_doc,
+	     "d9(K) -> K byte vector\n"
+	     "\n"
+	     "deserialize K object");
+static PyObject *
+K_d9(PyTypeObject *type, PyObject *args)
+{
+	K x;
+	if (!PyArg_ParseTuple(args, "O&:K._b9",
+			      &getK, &x))
+		return NULL;
+	return KObject_FromK(type, d9(x));
+}
 
 
 PyDoc_STRVAR(K_inspect_doc,
@@ -1614,6 +1641,8 @@ K_methods[] = {
 	{"_xT",	(PyCFunction)K_xT, METH_VARARGS|METH_CLASS, K_xT_doc},
 	{"_xD",	(PyCFunction)K_xD, METH_VARARGS|METH_CLASS, K_xD_doc},
 	{"_K",	(PyCFunction)K_K, METH_O|METH_CLASS, K_K_doc},
+	{"_b9",	(PyCFunction)K_b9, METH_VARARGS|METH_CLASS, K_b9_doc},
+	{"_d9",	(PyCFunction)K_d9, METH_VARARGS|METH_CLASS, K_d9_doc},
 
 	{"_from_array_interface", (PyCFunction)K_from_array_interface,
                                    METH_O|METH_CLASS, K_from_array_interface_doc},

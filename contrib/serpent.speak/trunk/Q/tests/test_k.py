@@ -8,7 +8,7 @@ PY3K = sys.hexversion >= 0x3000000
 # extract _k.K class methods
 for m in ('func k knk ktd err'
           ' ka kb kg kh ki kj ke kf kc ks km kd kz ku kv kt kp'
-          ' kdd ktt kzz knz kpz'
+          ' kdd ktt kzz knz kpz b9 d9'
           ' I J F S K xT xD').split():
     globals()[m] = getattr(_k.K, '_'+m)
 del m
@@ -366,7 +366,19 @@ else:
                 self.assertEqual(m.itemsize, s)
                 v = struct.unpack(f, m[0])
                 self.assertEqual(v[0], u)
-                
+
+
+class SerializationTestCase(K_TestCase):
+    def test_b9(self):
+        self.assert_k_is(b9(-1, kb(1)),    b'0x010000000a000000ff01')
+        self.assert_k_is(b9(-1, kc(b'a')), b'0x010000000a000000f661')
+        self.assert_k_is(b9(-1, kg(1)),    b'0x010000000a000000fc01')
+        self.assert_k_is(b9(-1, ki(1)),    b'0x010000000d000000fa01000000')
+        self.assert_k_is(b9(-1, kj(1)),    b'0x0100000011000000f90100000000000000')
+        self.assert_k_is(b9(-1, kp(b'')),  b'0x010000000e0000000a0000000000')
+    def test_d9(self):
+        self.assert_k_is(d9(q('0x010000000a000000ff00')), b"0b")
+
 try:
     from numpy import array
 except ImportError:
