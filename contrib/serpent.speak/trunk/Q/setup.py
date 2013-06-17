@@ -18,7 +18,15 @@ metadata = dict(
 ###############################################################################
 from distutils.core import Extension
 import os, sys
-python_lib_dir =  os.path.join(sys.exec_prefix, 'lib')
+from subprocess import check_output
+
+out = check_output(['ldd', sys.executable])
+for line in out.splitlines():
+    if 'libpython' in line:
+        python_lib_dir = os.path.dirname(line.split()[2])
+        break
+else:
+    python_lib_dir =  os.path.join(sys.exec_prefix, 'lib')
 _k = Extension('_k',
                sources=[ '_k.c',],
                extra_compile_args = [],
@@ -27,12 +35,15 @@ py = Extension('py',
                sources=[ 'py.c',],
                extra_compile_args = [],
                runtime_library_dirs = [python_lib_dir],
+               library_dirs = [python_lib_dir],
                )
 p = Extension('p',
               sources=[ 'p.c',],
               extra_compile_args = [],
               runtime_library_dirs = [python_lib_dir],
+              library_dirs = [python_lib_dir],
               )
+
 metadata.update(
     py_modules=['q','qc'],
     q_modules=['python'],
