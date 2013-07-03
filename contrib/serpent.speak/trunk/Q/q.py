@@ -587,10 +587,15 @@ timetok converts python time to k (DEPRECATED)
 k('12:30:00.999')
 
 """
+def datelisttok(x):
+    r = q("`date$()")
+    for d in x:
+        r = q(",", r, d)
+    return r
 
 def _ni(x): raise NotImplementedError
 _X = {str:K._S, int:(K._I if QVER[0] < '3' else K._J),
-      float:K._F, date:_ni, time:_ni, datetime:_ni}
+      float:K._F, date:datelisttok, time:_ni, datetime:_ni}
 def listtok(x):
     if x:
         return _X[type(x[0])](x)
